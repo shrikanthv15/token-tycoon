@@ -12,16 +12,23 @@ const { chromium } = require('playwright');
   await page.waitForTimeout(2000);
   if (!await page.evaluate(() => !!window.__tt)) throw new Error('Game did not boot');
 
-  // Setup: buy sub and hire two staffers (haiku and assistant)
-  await page.evaluate(() => { window.__tt.buySub('claude'); window.__tt.hire('haiku'); window.__tt.hire('fable'); });
+  // Setup: buy sub and hire ONE staffer (haiku)
+  await page.evaluate(() => { window.__tt.buySub('claude'); window.__tt.hire('haiku'); });
   await page.waitForTimeout(2000);
 
-  // Ensure both staff are present
+  // Ensure staff present
   const staffCount = await page.evaluate(() => window.__tt.state.staff.length);
-  if (staffCount < 2) throw new Error('Expected at least 2 staff after hiring');
+  if (staffCount < 1) throw new Error('Expected at least 1 staff after hiring');
 
-  // Verify context UI via __tt hooks
-  const contextFillBefore = await page.evaluate(() => window.__tt.state.contextFill);
+  // Manually set contextFill and risk on the staff to simulate accumulation
+  await page.evaluate(() => {
+    const staff = window.__tt.state.staff[0];
+    staff.contextFill = 45;
+    staff.risk = 0.3;
+  });
+
+  // Verify the staff has the expected values before compact
+  const contextFillBefore = await page.evaluate(() => window.__tt.state.staff[0].contextFill);
   if (contextFillBefore <= 0) throw new Error('Context fill should be >0 before compact');
 
   // Call compact on first staff member

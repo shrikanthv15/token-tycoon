@@ -22,7 +22,7 @@ const { chromium } = require('playwright');
   if (deptIdx < 0) throw new Error('No department created');
 
   // Set as current department
-  await page.evaluate(() => {
+  await page.evaluate(idx => {
     const dept = window.__tt.state.departments[idx];
     window.__tt.scene.currentDept = dept;
   }, deptIdx);
