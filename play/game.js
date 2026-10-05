@@ -220,6 +220,7 @@ class Office extends Phaser.Scene {
     });
     pauseBtn.on('pointerdown', () => {
       this.S.speed = 0;
+      this.updatePauseButton();
     });
     // auto dismiss after 6 seconds
     this.time.delayedCall(6000, () => this.clearTangent(), [], this);
@@ -514,7 +515,7 @@ class Office extends Phaser.Scene {
       subRows.push(row);
     }
     // position sub rows
-    let y = 130;
+    let y = 155;
     for (const r of subRows) { r.setY(y); this.sideC.add(r); y += 62; }
     // roster models for owned subs
     for (const [sid, sub] of Object.entries(SUBS)) {
@@ -567,7 +568,7 @@ class Office extends Phaser.Scene {
   // ----- department UI -----
   renderDept(SX) {
     const S = this.S;
-    let y = 130;
+    let y = 155;
     S.departments.forEach((dept, idx) => {
       const row = this.add.container(SX + 165, y);
       const bg = this.add.graphics();
@@ -1044,6 +1045,7 @@ class Office extends Phaser.Scene {
     this.S.day = saved.day;
     this.S.week = saved.week;
     this.S.speed = saved.speed;
+    this.updatePauseButton();
     this.S.revenue = saved.revenue;
     this.S.spent = saved.spent;
     this.S.roster = saved.roster || [];
