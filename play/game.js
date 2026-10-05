@@ -584,7 +584,9 @@ class Office extends Phaser.Scene {
     newBtn.on('pointerdown', () => this.createDepartment());
     this.sideC.add(newBtn);
     if (this.currentDept) {
-      this.sideC.add(this.add.text(SX + 10, 100, 'Current: ' + this.currentDept.name, { fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942' }));
+      // Render "Current:" label below department list and create button, never above y=130
+      const labelY = Math.max(y + 20, 130);
+      this.sideC.add(this.add.text(SX + 10, labelY, 'Current: ' + this.currentDept.name, { fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942' }));
     }
   }
 
