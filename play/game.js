@@ -101,7 +101,8 @@ function bakePerson(scene, key, shirtHex) {
 }
 function hexRgb(h) { return [(h >> 16) & 255, (h >> 8) & 255, h & 255]; }
 
-// ---------- state ----------
+// ----- state ----------
+// ----- state ----------
 function freshState() {
   return {
     cash: 100, day: 1, week: 1, dayT: 0, speed: 1, over: false,
@@ -111,6 +112,7 @@ function freshState() {
     revenue: 0, spent: 0, nextJobIn: 8,
     jobSeq: 1, done: 0, failed: 0,
     departments: [],   // {name:string, desks:[deskIdx]}
+    roster: [],        // unassigned models {model, id}
   };
 }
 
@@ -118,12 +120,21 @@ function freshState() {
 class Office extends Phaser.Scene {
   constructor() { super('office'); }
   create() {
+    // load persisted state if available
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('tt_state')); } catch(e) {}
     this.S = freshState();
     this.currentDept = null;
     this.buildTextures();
     this.buildOffice();
+    // State must exist before the HUD builds (buildTopbar calls refreshTop).
+    // Restore then runs over it. Fix by Kratos Muse 2026-10-04: restore used
+    // to run before buildTopbar, throwing on undefined text objects and
+    // killing boot after reload.
+    this.S = freshState();
     this.buildTopbar();
     this.buildSidebar();
+    if (saved) this._restoreFromSnapshot(saved);
     this.hint = this.add.text(475, 100, 'Buy a subscription (HIRE tab) → hire a model → drag jobs onto them',
       { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942', align: 'center' }).setOrigin(0.5).setDepth(50);
     this.time.delayedCall(12000, () => this.hint && this.hint.destroy(), [], this);
@@ -315,16 +326,17 @@ class Office extends Phaser.Scene {
   }
   renderHire(SX) {
     const S = this.S;
-    let y = 130;
+    const subRows = [];
     for (const [sid, sub] of Object.entries(SUBS)) {
       const owned = !!S.subs[sid];
-      const row = this.add.container(SX + 165, y);
+      // sub row
+      const row = this.add.container(SX + 165, 0);
       const bg = this.add.graphics();
       bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -26, 290, 52, 8);
       bg.lineStyle(2, owned ? 0x4ade80 : 0x1f2a3f, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
       row.add([bg,
         this.add.text(-130, -18, sub.name, { fontFamily: 'Courier New', fontSize: '15px', color: sub.css, fontStyle: 'bold' }),
-        this.add.text(-130, 4, owned ? 'active' : `$${sub.price}/wk`, { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' }),
+        this.add.text(-130, 4, owned ? 'active' : `$${sub.price}/wk`, { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
       ]);
       if (!owned) {
         const b = this.add.text(110, -8, '[ BUY ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942', fontStyle: 'bold' })
@@ -332,26 +344,28 @@ class Office extends Phaser.Scene {
         b.on('pointerdown', () => this.buySub(sid));
         row.add(b);
       }
-      this.sideC.add(row); y += 62;
-      if (owned) {
-        for (const mid of Object.keys(MODELS).filter(m => MODELS[m].sub === sid)) {
-          const m = MODELS[mid];
-          const hired = S.staff.some(s => s.model === mid);
-          const mr = this.add.container(SX + 165, y);
-          const mbg = this.add.graphics();
-          mbg.fillStyle(0x0e131c, 1).fillRoundedRect(-135, -20, 270, 40, 6);
-          mr.add([mbg,
-            this.add.text(-120, -12, `${m.name}  ${'★'.repeat(m.cap)}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#eceff4' }),
-            this.add.text(-120, 6, hired ? 'hired' : 'click to hire → walks in',
-              { fontFamily: 'Courier New', fontSize: '11px', color: hired ? '#4ade80' : '#5a6578' }),
-          ]);
-          if (!hired) {
-            mr.setSize(270, 40).setInteractive({ useHandCursor: true });
-            mr.on('pointerdown', () => this.hire(mid));
-          }
-          this.sideC.add(mr); y += 46;
-        }
-        y += 8;
+      subRows.push(row);
+    }
+    // position sub rows
+    let y = 130;
+    for (const r of subRows) { r.setY(y); this.sideC.add(r); y += 62; }
+    // roster models for owned subs
+    for (const [sid, sub] of Object.entries(SUBS)) {
+      if (!S.subs[sid]) continue;
+      const modelsForSub = Object.keys(MODELS).filter(m => MODELS[m].sub === sid && S.roster.some(r => r.model === m));
+      for (const mid of modelsForSub) {
+        const m = MODELS[mid];
+        const mr = this.add.container(SX + 165, y);
+        const mbg = this.add.graphics();
+        mbg.fillStyle(0x0e131c, 1).fillRoundedRect(-135, -20, 270, 40, 6);
+        mr.add([mbg,
+          this.add.text(-120, -12, `${m.name}  ${'★'.repeat(m.cap)}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#eceff4' }),
+          this.add.text(-120, 6, 'click to assign → walks in', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' })
+        ]);
+        mr.setSize(270, 40).setInteractive({ useHandCursor: true });
+        mr.on('pointerdown', () => this.hire(mid)); // reuse hire which now checks roster
+        this.sideC.add(mr);
+        y += 46;
       }
     }
     if (S.staff.length) {
@@ -412,13 +426,25 @@ class Office extends Phaser.Scene {
     if (S.subs[sid] || S.cash < sub.price || S.over) return;
     S.cash -= sub.price; S.spent += sub.price;
     S.subs[sid] = { h5: sub.h5, wk: sub.wk };
+    // unlock all models for this sub into roster
+    for (const [mid, m] of Object.entries(MODELS)) {
+      if (m.sub === sid) {
+        // avoid duplicates
+        if (!S.roster.some(r => r.model === mid)) {
+          S.roster.push({ model: mid, id: S.roster.length + 1 });
+        }
+      }
+    }
     this.refreshTop(); this.renderSidebar();
   }
   hire(mid) {
     const S = this.S, m = MODELS[mid];
-    if (!S.subs[m.sub] || S.staff.some(s => s.model === mid) || S.over) return;
+    // Must own subscription and model must be in roster (unassigned)
+    if (!S.subs[m.sub] || !S.roster.some(r => r.model === mid) || S.over) return;
     const desk = this.deskObjs.find(d => !d.taken);
-    if (!desk) return;
+    if (!desk) return; // no free desk
+    // remove from roster
+    S.roster = S.roster.filter(r => r.model !== mid);
     desk.taken = true;
     desk.plate.setText(m.name.toUpperCase());
     const spr = this.add.image(DOOR.x, DOOR.y + 20, 'p_' + mid + '0').setScale(3).setDepth(15);
@@ -426,13 +452,18 @@ class Office extends Phaser.Scene {
     S.staff.push(st);
     spr.setInteractive({ useHandCursor: true });
     spr.on('pointerdown', () => this.fire(st));
+    // walk to desk (reuse hire animation)
     this.tweens.add({
       targets: spr, x: desk.x, y: desk.y + 66, duration: 1400, ease: 'Linear',
       onUpdate: () => {
         st.walkT += 1;
         if (st.walkT % 12 === 0) { st.frame = st.frame === 1 ? 2 : 1; spr.setTexture('p_' + mid + st.frame); }
       },
-      onComplete: () => { this.sitDown(st); },
+      onComplete: () => {
+        this.sitDown(st);
+        // persist after assignment
+        this._persist();
+      },
     });
     this.renderSidebar();
   }
@@ -447,6 +478,8 @@ class Office extends Phaser.Scene {
     const S = this.S;
     if (st.busy || S.over) return;
     if (st.idle) st.idle.stop();
+    // return model to roster
+    S.roster.push({ model: st.model, id: S.roster.length + 1 });
     S.staff = S.staff.filter(s => s !== st);
     st.desk.taken = false;
     st.desk.plate.setText('EMPTY DESK');
@@ -456,6 +489,8 @@ class Office extends Phaser.Scene {
       onComplete: () => st.spr.destroy(),
     });
     this.renderSidebar();
+    // persist state snapshot
+    this._persist()
   }
   assignJob(jobId, deskObj) {
     const S = this.S;
@@ -572,6 +607,70 @@ class Office extends Phaser.Scene {
     btn.on('pointerdown', () => this.scene.restart());
     o.add(btn);
   }
+
+  // ----- persistence helpers -----
+  _snapshot() {
+    const S = this.S;
+    return {
+      cash: S.cash,
+      day: S.day,
+      week: S.week,
+      speed: S.speed,
+      revenue: S.revenue,
+      spent: S.spent,
+      roster: S.roster,
+      subs: S.subs,
+      departments: S.departments || [],
+      staff: S.staff.map(st => ({ model: st.model, deskIndex: this.deskObjs.indexOf(st.desk) })),
+      // jobs carry j.card (Phaser container) once rendered — strip to plain fields
+      // or JSON.stringify throws on circular refs and _persist silently dies (D-001)
+      jobs: S.jobs.map(j => ({ id: j.id, title: j.title, stars: j.stars, pay: j.pay })),
+      nextJobIn: S.nextJobIn,
+      jobSeq: S.jobSeq,
+      done: S.done,
+      failed: S.failed,
+    };
+  }
+
+  _persist() {
+    try { localStorage.setItem('tt_state', JSON.stringify(this._snapshot())); } catch(e) {}
+  }
+
+  _restoreFromSnapshot(saved) {
+    this.S = freshState();
+    this.S.cash = saved.cash;
+    this.S.day = saved.day;
+    this.S.week = saved.week;
+    this.S.speed = saved.speed;
+    this.S.revenue = saved.revenue;
+    this.S.spent = saved.spent;
+    this.S.roster = saved.roster || [];
+    this.S.subs = saved.subs || {};
+    this.S.departments = saved.departments || [];
+    this.S.jobs = saved.jobs || [];
+    this.S.nextJobIn = saved.nextJobIn;
+    this.S.jobSeq = saved.jobSeq;
+    this.S.done = saved.done;
+    this.S.failed = saved.failed;
+    if (Array.isArray(saved.staff)) {
+      saved.staff.forEach(stSnap => {
+        const desk = this.deskObjs[stSnap.deskIndex];
+        if (!desk) return;
+        const mid = stSnap.model;
+        const spr = this.add.image(DOOR.x, DOOR.y + 20, 'p_' + mid + '0').setScale(3).setDepth(15);
+        const st = { model: mid, desk, spr, busy: false, job: null, frame: 0, walkT: 0 };
+        this.S.staff.push(st);
+        desk.taken = true;
+        desk.plate.setText(MODELS[mid].name.toUpperCase());
+        spr.setInteractive({ useHandCursor: true });
+        spr.on('pointerdown', () => this.fire(st));
+        this.sitDown(st);
+      });
+    }
+    this.refreshTop();
+    this.renderSidebar();
+  }
+
   // ----- test hooks -----
   exposeHooks() {
     window.__tt = {
