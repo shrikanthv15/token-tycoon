@@ -408,6 +408,7 @@ class Office extends Phaser.Scene {
     this.tabInbox = mkTab(SX + 24, 'INBOX', 'inbox');
     this.tabHire = mkTab(SX + 130, 'HIRE', 'hire');
     this.tabDept = mkTab(SX + 236, 'DEPT', 'dept');
+    this.jobSourceText = this.add.text(SX + 20, 120, 'jobs: LOCAL', {fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942'}).setDepth(30);
     this.sideC = this.add.container(0, 0).setDepth(20);
     this.renderSidebar();
   }
@@ -441,6 +442,9 @@ class Office extends Phaser.Scene {
 
   // ----- job UI -----
   renderInbox(SX) {
+    // update job source indicator
+    if (this.jobSourceText) this.jobSourceText.setText('jobs: ' + (this.lastJobSource || 'local').toUpperCase());
+
     const S = this.S;
     if (!S.jobs.length) {
       this.sideC.add(this.add.text(SX + 165, 300, 'No jobs yet.\nClients will ping you soon.',
@@ -457,7 +461,14 @@ class Office extends Phaser.Scene {
       const desc = this.add.text(-130, -30, j.description || '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad', wordWrap: { width: 260 } });
       const meta = this.add.text(-130, 4, '★'.repeat(j.stars) + `  $${j.pay}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' });
       const hint = this.add.text(-130, 28, 'drag onto a person', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
+      // badge for AI jobs
+      let badge = null;
+      if (j.ai) {
+        badge = this.add.text(120, -48, 'AI', { fontFamily: 'Courier New', fontSize: '12px', color: '#ffbf00', fontStyle: 'bold' })
+          .setOrigin(0.5);
+      }
       card.add([bg, title, desc, meta, hint]);
+      if (badge) card.add(badge);
       card.setInteractive(new Phaser.Geom.Rectangle(-145, -60, 290, 120), Phaser.Geom.Rectangle.Contains);
       this.input.setDraggable(card);
       card.setData('jobId', j.id);
@@ -795,25 +806,29 @@ class Office extends Phaser.Scene {
       // requestJobs returns a promise
       window.NemotronBridge.requestJobs(snapshot).then(remoteJobs => {
         if (Array.isArray(remoteJobs) && remoteJobs.length) {
+          this.lastJobSource = 'ai';
           remoteJobs.forEach(job => {
             const finalTitle = job.title || title || 'Untitled';
             const finalDesc = job.description || description || '';
             const finalStars = job.stars || stars || 1;
             const finalPay = job.pay || pay || 0;
-            S.jobs.push({ id: S.jobSeq++, title: finalTitle, description: finalDesc, stars: finalStars, pay: finalPay });
+            S.jobs.push({ id: S.jobSeq++, title: finalTitle, description: finalDesc, stars: finalStars, pay: finalPay, ai: true });
           });
           if (this.tab === 'inbox') this.renderSidebar();
         } else {
           // fallback to local generation
+          this.lastJobSource = 'local';
           this._localSpawnJob(stars, pay, title, description);
         }
       }).catch(() => {
         // network or other error – fallback locally
+        this.lastJobSource = 'local';
         this._localSpawnJob(stars, pay, title, description);
       });
       return; // async handling will add jobs later
     }
     // Fallback local generation
+    this.lastJobSource = 'local';
     this._localSpawnJob(stars, pay, title, description);
   }
 
