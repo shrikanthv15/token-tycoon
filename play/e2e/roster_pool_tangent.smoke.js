@@ -40,7 +40,7 @@ const { chromium } = require('playwright');
   const start = Date.now();
   let tangentSeen = false;
   while (Date.now() - start < maxWait && !tangentSeen) {
-    tangentSeen = await page.evaluate(() => !!window.__tt.tangentActive);
+    tangentSeen = await page.evaluate(() => !!window.__tt.tangentActive());
     if (!tangentSeen) await page.waitForTimeout(500);
   }
   if (!tangentSeen) throw new Error('Tangent event did not fire within timeout');
