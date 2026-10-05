@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
   if (!booted) throw new Error('Game did not boot');
 
   // Buy Claude subscription and hire Haiku model
-  await page.evaluate(() => { window.__tt.buySub('claude'); window.__tt.hire('haiku'); });
+  await page.evaluate(() => { window.__tt.buySub('claude'); window.__tt.hire('haiku'); window.__tt.hire('assistant'); });
   await page.waitForTimeout(2000);
   const staffCount = await page.evaluate(() => window.__tt.state.staff.length);
   if (staffCount !== 1) throw new Error('Expected 1 staff after hiring Haiku');

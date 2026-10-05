@@ -28,7 +28,7 @@ const { chromium } = require('playwright');
   }, deptIdx);
 
   // Toggle desk 0 into department
-  await page.evaluate(() => window.__tt.toggleDeskDept(0));
+  await page.evaluate(() => window.__tt.scene.toggleDeskDept(0));
   const desks = await page.evaluate(() => window.__tt.currentDept?.desks || []);
   if (!desks.includes(0)) throw new Error('Desk not assigned to department');
 
