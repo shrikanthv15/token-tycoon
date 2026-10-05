@@ -13,7 +13,7 @@ from dynamic_credentials import add_surrogate_to_request, read_json_response
 BASE = "https://api.vercel.com"
 ALLOWED = ("api.vercel.com",)
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # play/
-FILES = ["index.html", "game.js", "vendor/phaser.min.js"]
+FILES = ["index.html", "game.js", "nemotron.js", "vendor/phaser.min.js"]
 
 
 def call(method, path, body=None):
