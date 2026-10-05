@@ -20,7 +20,7 @@ const { chromium } = require('/home/hatch/workspace/token-tycoon/play-v2/e2e/nod
   const staff = await page.evaluate(() => window.__tt.state.staff.length);
   const seated = await page.evaluate(() => {
     const s = window.__tt.state.staff[0];
-    return s && Math.abs(s.spr.y - (s.desk.y - 55)) < 5;
+    return s && Math.abs(s.spr.y - (s.desk.y - 64)) < 5;
   });
   console.log('staff:', staff, '| seated at desk:', seated);
   if (staff !== 1 || !seated) throw new Error('hire/walk-in failed');

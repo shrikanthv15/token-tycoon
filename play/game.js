@@ -32,13 +32,13 @@ const DOOR = { x: 790, y: 800 };
 
 // ---------- pixel sprites ----------
 function personFrame(shirt, frame) {
-  // 12x18. frame: 0 stand, 1 walk-a, 2 walk-b, 3 sit
-  const S = 'S', H = 'H', T = 'T', P = 'P', X = 'X', d = '.';
+  // 12 wide. frame: 0 stand, 1 walk-a, 2 walk-b, 3 sit idle, 4 sit typing-a, 5 sit typing-b
+  const S = 'S', H = 'H', T = 'T', P = 'P', X = 'X', d = '.', N = 'N';
   const legs = [
     ['...PP..PP...', '...PP..PP...', '...PP..PP...', '..PPP..PPP..', '..XXX..XXX..'],
     ['..PP...PP...', '..PP...PP...', '..PP...PP...', '.PPP....PPP.', '.XXX....XXX.'],
     ['...PP..PP...', '...PP..PP...', '...PP..PP...', '..PPP..PPP..', '..XXX..XXX..'],
-  ][frame === 3 ? 0 : frame];
+  ][frame <= 2 ? frame : 0];
   const rows = [
     '....HHHH....',
     '...HHHHHH...',
@@ -55,13 +55,17 @@ function personFrame(shirt, frame) {
     '...PPPPPP...',
     ...legs,
   ];
-  if (frame === 3) return rows.slice(0, 11); // seated: torso only
+  if (frame >= 3) {
+    // seated: torso + hands over the keyboard; hands jiggle while typing
+    const hands = { 3: '....NN..NN..', 4: '...NN...NN...', 5: '....NN.NN...' }[frame];
+    return rows.slice(0, 11).concat([hands]);
+  }
   return rows;
 }
-const PAL = { H: [90, 60, 40], S: [235, 200, 170], T: null, P: [50, 70, 120], X: [40, 40, 45] };
+const PAL = { H: [90, 60, 40], S: [235, 200, 170], T: null, P: [50, 70, 120], X: [40, 40, 45], N: [235, 200, 170] };
 
 function bakePerson(scene, key, shirtHex) {
-  for (let f = 0; f < 4; f++) {
+  for (let f = 0; f < 6; f++) {
     const rows = personFrame(shirtHex, f);
     const w = 12, h = rows.length;
     const t = scene.textures.createCanvas(key + f, w, h);
@@ -163,20 +167,32 @@ class Office extends Phaser.Scene {
     this.deskObjs = DESKS.map((d, i) => {
       const c = this.add.container(d.x, d.y).setDepth(10);
       const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
-      // monitor
+      // monitor (off to the left so the seated person is visible)
       const mon = this.add.graphics();
-      mon.fillStyle(0x1a1e28, 1).fillRect(-26, -52, 52, 34);
-      mon.fillStyle(0x58c4dc, 0.85).fillRect(-22, -48, 44, 26);
-      mon.fillStyle(0x1a1e28, 1).fillRect(-4, -18, 8, 10);
-      // keyboard
+      mon.fillStyle(0x1a1e28, 1).fillRect(-78, -52, 52, 34);
+      mon.fillStyle(0x58c4dc, 0.85).fillRect(-74, -48, 44, 26);
+      mon.fillStyle(0x1a1e28, 1).fillRect(-56, -18, 8, 10);
+      // keyboard (centered under the seated person's hands)
       const kb = this.add.graphics();
-      kb.fillStyle(0xdfe6ee, 1).fillRect(-24, 22, 48, 12);
+      kb.fillStyle(0xdfe6ee, 1).fillRect(-14, 22, 48, 12);
       kb.fillStyle(0x8b98ad, 1);
-      for (let k = 0; k < 6; k++) kb.fillRect(-20 + k * 8, 24, 5, 8);
+      for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
       // name plate
       const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
       c.add([top, mon, kb, plate]);
       return { x: d.x, y: d.y, c, plate, taken: false };
+    });
+    // office chairs at each desk (depth 8: behind seated staff at 9, in front of floor)
+    DESKS.forEach(d => {
+      const ch = this.add.graphics().setDepth(8);
+      const x = d.x, b = d.y - 28;
+      ch.fillStyle(0x2a3140, 1);
+      ch.fillRect(x - 13, b - 64, 26, 48);   // backrest (peeks above the head)
+      ch.fillRect(x - 17, b - 18, 34, 10);   // seat (tucks under the torso)
+      ch.fillRect(x - 3, b - 8, 6, 20);       // post
+      ch.fillRect(x - 16, b + 10, 32, 6);     // base
+      ch.fillStyle(0x39424f, 1);
+      ch.fillRect(x - 13, b - 64, 26, 8);     // backrest top highlight
     });
   }
 
@@ -357,16 +373,25 @@ class Office extends Phaser.Scene {
         if (st.walkT % 12 === 0) { st.frame = st.frame === 1 ? 2 : 1; spr.setTexture('p_' + mid + st.frame); }
       },
       onComplete: () => {
-        spr.setTexture('p_' + mid + '0'); // seated: full body, desk+monitor occlude lower half
-        spr.setDepth(9);
-        spr.y = desk.y - 55;
+        this.sitDown(st);
       },
     });
     this.renderSidebar();
   }
+  sitDown(st) {
+    // seated pose: torso+hands frame on the chair, gentle idle breathing
+    const spr = st.spr, mid = st.model;
+    spr.setTexture('p_' + mid + '3').setDepth(9);
+    spr.y = st.desk.y - 64;
+    if (st.idle) st.idle.stop();
+    st.idle = this.tweens.add({
+      targets: spr, y: st.desk.y - 66, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+  }
   fire(st) {
     const S = this.S;
     if (st.busy || S.over) return;
+    if (st.idle) st.idle.stop();
     S.staff = S.staff.filter(s => s !== st);
     st.desk.taken = false;
     st.desk.plate.setText('EMPTY DESK');
@@ -385,7 +410,7 @@ class Office extends Phaser.Scene {
     const m = MODELS[st.model], sub = S.subs[m.sub];
     const cost = Math.round(m.cost * (0.7 + 0.3 * j.stars));
     if (!sub || sub.h5 < cost || sub.wk < cost) {
-      this.flashText(deskObj.x, deskObj.y - 90, 'POOL DRY', '#f87171');
+      this.flashText(deskObj.x, deskObj.y - 118, 'POOL DRY', '#f87171');
       this.renderSidebar(); return;
     }
     sub.h5 -= cost; sub.wk -= cost;
@@ -396,7 +421,11 @@ class Office extends Phaser.Scene {
     st.bar = bar;
     const dur = (j.stars === 1 ? 40 : j.stars === 2 ? 65 : 100) * 1000;
     st.workT = 0; st.workDur = dur;
-    // typing bounce
+    // typing: hands alternate frames, body bounces at the keyboard
+    if (st.idle) st.idle.stop();
+    st.spr.y = st.desk.y - 64;
+    st.spr.setTexture('p_' + st.model + '4');
+    st.typeT = 0; st.typeF = 4;
     st.bounce = this.tweens.add({ targets: st.spr, y: '-=4', duration: 180, yoyo: true, repeat: -1 });
     this.renderSidebar();
   }
@@ -405,14 +434,14 @@ class Office extends Phaser.Scene {
     if (st.bounce) st.bounce.stop();
     st.busy = false; st.job = null;
     if (st.bar) { st.bar.destroy(); st.bar = null; }
-    st.spr.y = st.desk.y - 55;
+    this.sitDown(st);
     if (success) {
       S.cash += j.pay; S.revenue += j.pay; S.done++;
-      this.flashText(st.desk.x, st.desk.y - 90, `+$${j.pay}`, '#4ade80');
+      this.flashText(st.desk.x, st.desk.y - 118, `+$${j.pay}`, '#4ade80');
       this.tweens.add({ targets: st.spr, y: '-=10', duration: 160, yoyo: true, repeat: 1 }); // happy hop
     } else {
       S.failed++;
-      this.flashText(st.desk.x, st.desk.y - 90, 'FAILED', '#f87171');
+      this.flashText(st.desk.x, st.desk.y - 118, 'FAILED', '#f87171');
     }
     this.refreshTop();
   }
@@ -451,11 +480,18 @@ class Office extends Phaser.Scene {
     // work progress
     for (const st of S.staff) {
       if (!st.busy) continue;
+      // typing hands: alternate the two typing frames
+      st.typeT = (st.typeT || 0) + delta * S.speed;
+      if (st.typeT > 160) {
+        st.typeT = 0;
+        st.typeF = st.typeF === 4 ? 5 : 4;
+        st.spr.setTexture('p_' + st.model + st.typeF);
+      }
       st.workT += delta * S.speed;
       const p = Math.min(1, st.workT / st.workDur);
       const g = st.bar; g.clear();
-      g.fillStyle(0x1f2a3f, 1).fillRect(st.desk.x - 30, st.desk.y - 78, 60, 8);
-      g.fillStyle(0xf5b942, 1).fillRect(st.desk.x - 30, st.desk.y - 78, 60 * p, 8);
+      g.fillStyle(0x1f2a3f, 1).fillRect(st.desk.x - 30, st.desk.y - 100, 60, 8);
+      g.fillStyle(0xf5b942, 1).fillRect(st.desk.x - 30, st.desk.y - 100, 60 * p, 8);
       if (p >= 1) {
         const m = MODELS[st.model], j = st.job;
         const fit = m.cap - j.stars; // >=0 good
