@@ -438,11 +438,15 @@ class Office extends Phaser.Scene {
   }
 
   createDepartment() {
-    const name = prompt('Enter department name:');
-    if (!name) return;
-    if (this.S.departments.some(d => d.name === name)) { alert('Name exists'); return; }
+    const n = this.S.departments.length + 1;
+    let name = `Dept ${n}`;
+    if (this.S.departments.some(d => d.name === name)) {
+      let i = n + 1;
+      while (this.S.departments.some(d => d.name === `Dept ${i}`)) i++;
+      name = `Dept ${i}`;
+    }
     this.S.departments.push({ name, desks: [], unlocks: ['batch', 'pool'] });
-    this.renderDept(950);
+    this.renderSidebar();
   }
 
   // ----- economy -----
