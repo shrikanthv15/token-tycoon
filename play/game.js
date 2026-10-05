@@ -143,8 +143,85 @@ class Office extends Phaser.Scene {
       { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942', align: 'center' }).setOrigin(0.5).setDepth(50);
     this.time.delayedCall(12000, () => this.hint && this.hint.destroy(), [], this);
     this.exposeHooks();
+    // Tangent event timer: occasional staff wander off, wasting pool
+    this.time.addEvent({ delay: 6000, loop: true, callback: this.maybeTangent, callbackScope: this });
+    this.tangentActive = false;
+    this.tangentStaff = null;
+    this.tangentToast = null;
   }
 
+  maybeTangent() {
+    // 5% chance each interval
+    if (Math.random() < 0.05 && !this.tangentActive) {
+      // pick an idle staff member
+      const idle = this.S.staff.find(s => !s.busy && !s.tangent);
+      if (!idle) return;
+      this.tangentActive = true;
+      this.tangentStaff = idle;
+      idle.tangent = true;
+      // move sprite to wander position
+      const wanderX = idle.desk.x + (Math.random() * 100 - 50);
+      const wanderY = idle.desk.y + (Math.random() * 100 - 50);
+      this.tweens.add({ targets: idle.spr, x: wanderX, y: wanderY, duration: 1200, ease: 'Linear' });
+      // waste pool: deduct 5 from sub pool if any
+      const model = MODELS[idle.model];
+      const subId = model.sub;
+      const sub = this.S.subs[subId];
+      if (sub) {
+        sub.wk = Math.max(0, sub.wk - 5);
+        sub.h5 = Math.max(0, sub.h5 - 2);
+      }
+      // show toast alert
+      this.showTangentToast();
+    }
+  }
+
+  showTangentToast() {
+    const tx = 640, ty = 100;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2a3852, 1).fillRoundedRect(tx - 200, ty - 30, 400, 60, 10);
+    const msg = this.add.text(tx, ty, 'Staff wandered! Pool wasted.', { fontFamily: 'Courier New', fontSize: '16px', color: '#f5b942' }).setOrigin(0.5);
+    const recoverBtn = this.add.text(tx - 80, ty + 20, '[ RECOVER ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#4ade80', fontStyle: 'bold' })
+      .setInteractive({ useHandCursor: true });
+    const pauseBtn = this.add.text(tx + 40, ty + 20, '[ PAUSE ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f87171', fontStyle: 'bold' })
+      .setInteractive({ useHandCursor: true });
+    const container = this.add.container(0, 0, [bg, msg, recoverBtn, pauseBtn]);
+    this.tangentToast = container;
+    recoverBtn.on('pointerdown', () => {
+      // restore pool values (simple: add back same amount)
+      const idle = this.tangentStaff;
+      if (idle) {
+        const model = MODELS[idle.model];
+        const sub = this.S.subs[model.sub];
+        if (sub) {
+          sub.wk += 5;
+          sub.h5 += 2;
+        }
+        // move staff back to desk and sit
+        this.tweens.add({ targets: idle.spr, x: idle.desk.x, y: idle.desk.y - 64, duration: 800, ease: 'Linear', onComplete: () => {
+          this.sitDown(idle);
+        } });
+        idle.tangent = false;
+      }
+      this.clearTangent();
+    });
+    pauseBtn.on('pointerdown', () => {
+      this.S.speed = 0;
+    });
+    // auto dismiss after 6 seconds
+    this.time.delayedCall(6000, () => this.clearTangent(), [], this);
+  }
+
+  clearTangent() {
+    if (this.tangentToast) { this.tangentToast.destroy(); this.tangentToast = null; }
+    this.tangentActive = false;
+    if (this.tangentStaff) this.tangentStaff.tangent = false;
+    this.tangentStaff = null;
+    // refresh UI if needed
+    this.renderSidebar();
+  }
+
+  // ----- existing methods continue below -----
   // ----- textures -----
   buildTextures() {
     for (const [mid, m] of Object.entries(MODELS)) bakePerson(this, 'p_' + mid, SUBS[m.sub].color);
@@ -806,6 +883,8 @@ class Office extends Phaser.Scene {
       cash: () => Math.round(this.S.cash),
       departments: this.S.departments,
       currentDept: this.currentDept,
+      // Tangent event state for testing
+      tangentActive: () => this.tangentActive,
     };
   }
 }
