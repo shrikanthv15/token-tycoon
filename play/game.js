@@ -156,6 +156,7 @@ class Office extends Phaser.Scene {
   }
 
   maybeTangent() {
+    if (this.S.speed === 0) return;
     // 5% chance each interval
     if (Math.random() < 0.05 && !this.tangentActive) {
       // pick an idle staff member
