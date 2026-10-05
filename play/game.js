@@ -145,7 +145,7 @@ class Office extends Phaser.Scene {
     this.exposeHooks();
     // Day/night overlay based on clock
     const { width, height } = this.scale;
-    this.tintOverlay = this.add.rectangle(width/2, height/2, width, height, 0xffe0a0).setAlpha(0.2).setDepth(5);
+    this.tintOverlay = this.add.rectangle(width/2, height/2, width, height, 0xffe0a0).setDepth(5);
     this.prevDay = this.S.day;
     this.updateTint();
     // Tangent event timer: occasional staff wander off, wasting pool
