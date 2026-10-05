@@ -43,10 +43,17 @@ const { chromium } = require('playwright');
 
   const beforeCount = await page.evaluate(() => window.__tt.state.jobs.length);
   await page.evaluate(() => { window.__tt.spawnJob(); });
-  // Wait a short moment for fallback local job to be added
-  await page.waitForTimeout(500);
+  // The bridge aborts at 3s and falls back locally; the 4s delayed route only
+  // resolves after the abort, so poll for the fallback job instead of a fixed wait.
+  await page.waitForFunction((n) => window.__tt.state.jobs.length > n, beforeCount, { timeout: 20000 });
   const afterCount = await page.evaluate(() => window.__tt.state.jobs.length);
   if (afterCount <= beforeCount) throw new Error('Fallback local job not generated on timeout/invalid');
+  const fellBackLocal = await page.evaluate(() => {
+    const sc = window.__tt.scene;
+    const last = sc.S.jobs[sc.S.jobs.length - 1];
+    return !last.ai && sc.lastJobSource === 'local';
+  });
+  if (!fellBackLocal) throw new Error('Timeout did not fall back to a local job');
 
   await browser.close();
   if (errors.length) throw new Error('Encountered errors: ' + errors.join(' | '));

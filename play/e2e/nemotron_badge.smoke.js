@@ -38,7 +38,7 @@ const { chromium } = require('playwright');
 
   // Verify source indicator shows AI
   const sourceText = await page.evaluate(() => {
-    const txt = window.__tt.jobSourceText;
+    const txt = window.__tt.scene.jobSourceText;
     return txt ? txt.text : '';
   });
   if (!sourceText.includes('AI')) throw new Error('Source indicator not updated to AI');
@@ -49,7 +49,7 @@ const { chromium } = require('playwright');
   });
   await page.evaluate(() => { window.__tt.spawnJob(); });
   await page.waitForTimeout(500);
-  const sourceAfter = await page.evaluate(() => window.__tt.jobSourceText ? window.__tt.jobSourceText.text : '');
+  const sourceAfter = await page.evaluate(() => window.__tt.scene.jobSourceText ? window.__tt.scene.jobSourceText.text : '');
   if (!sourceAfter.includes('LOCAL')) throw new Error('Source indicator not fallback to LOCAL');
 
   await browser.close();

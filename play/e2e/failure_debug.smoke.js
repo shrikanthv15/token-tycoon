@@ -14,42 +14,53 @@ const { chromium } = require('playwright');
   // Ensure a sub and staffer exist
   await page.evaluate(() => { window.__tt.buySub('claude'); window.__tt.hire('haiku'); });
   await page.waitForTimeout(2000);
+  await page.evaluate(() => { window.__tt.spawnJob(1, 10); });
+  await page.waitForTimeout(400);
 
-  // Force a failure by setting low pool and then assign a job that will fail
+  // Assign the job, then force a deterministic failure: risk=1 makes
+  // completeJob always fail (Math.random() > 1 is never true). Keep pools
+  // full - POOL DRY blocks assignment, so zeroing pools can never fail a job.
   await page.evaluate(() => {
     const S = window.__tt.state;
-    const subId = 'claude';
-    if (S.subs[subId]) { S.subs[subId].h5 = 0; S.subs[subId].wk = 0; }
-    // spawn a 3-star job (hard) to increase failure chance
-    window.__tt.spawnJob(3, 10);
+    window.__tt.assign(S.jobs[S.jobs.length - 1].id, 0);
+    const st = S.staff[0];
+    st.risk = 1;
+    st.workT = st.workDur - 300; // complete almost immediately
   });
+  await page.waitForFunction(() => !!window.__tt.state.staff[0].failMarker, null, { timeout: 20000 });
 
-  // Assign the job to the staffer (first desk)
-  const staff = await page.evaluate(() => window.__tt.state.staff[0]);
-  const jobId = await page.evaluate(() => window.__tt.state.jobs[0].id);
-  await page.evaluate((jid) => { window.__tt.assign(jid, 0); }, jobId);
-  await page.waitForTimeout(5000);
+  // Click the staffer to open the debug modal
+  await page.evaluate(() => { window.__tt.state.staff[0].spr.emit('pointerdown'); });
+  await page.waitForTimeout(800);
 
-  // If job failed, a debug marker should appear
-  const hasFail = await page.evaluate(() => !!window.__tt.state.staff[0].failMarker);
-  if (!hasFail) throw new Error('Expected failure marker not present');
-
-  // Click the staffer to open debug UI
-  await page.evaluate(() => { const s = window.__tt.state.staff[0]; s.spr.emit('pointerdown'); });
-  await page.waitForTimeout(1000);
-
-  // Click debug button
-  await page.evaluate(() => {
-    const overlay = window.__tt.scene.children.list.find(c => c.depth === 81);
-    if (!overlay) throw new Error('Debug overlay not found');
-    // simulate clicking the debug button by calling its handler directly
-    const btn = overlay.list.find(t => t.text === '[ DEBUG ]');
-    if (btn && btn.input && btn.input.enabled) btn.emit('pointerdown');
+  // Click the [ DEBUG ] button inside the modal (depth 81)
+  const debugged = await page.evaluate(() => {
+    const modal = window.__tt.scene.children.list.find(c => c.depth === 81);
+    if (!modal) return false;
+    const btn = modal.list.find(t => t.text === '[ DEBUG ]');
+    if (btn && btn.input && btn.input.enabled) { btn.emit('pointerdown'); return true; }
+    return false;
   });
+  if (!debugged) throw new Error('Debug button not clickable');
+  await page.waitForTimeout(600);
 
-  await page.waitForTimeout(500);
+  // Marker cleared, debug handler detached, staffer still employed
+  const st = await page.evaluate(() => {
+    const s = window.__tt.state.staff[0];
+    return { markerGone: !s.failMarker, handlerCleared: !s.debugHandler, staff: window.__tt.state.staff.length };
+  });
+  if (!st.markerGone || !st.handlerCleared || st.staff !== 1) {
+    throw new Error('Debug did not resolve cleanly: ' + JSON.stringify(st));
+  }
+
+  // Click-to-fire restored after debug: clicking the staffer fires them
+  await page.evaluate(() => { window.__tt.state.staff[0].spr.emit('pointerdown'); });
+  await page.waitForTimeout(1500);
+  const staffAfter = await page.evaluate(() => window.__tt.state.staff.length);
+  if (staffAfter !== 0) throw new Error('click-to-fire not restored after debug');
+
   if (errors.length) throw new Error('Encountered errors: ' + errors.join(' | '));
   console.log('FAILURE_DEBUG SMOKE PASS');
   await browser.close();
   process.exit(0);
-})();
+})().catch(e => { console.error('FAILURE_DEBUG SMOKE FAIL:', e.message); process.exit(1); });

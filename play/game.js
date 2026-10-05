@@ -521,10 +521,14 @@ class Office extends Phaser.Scene {
           this.add.text(-120, -12, `${m.name}  ${'★'.repeat(m.cap)}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#eceff4' }),
           this.add.text(-120, 6, 'click to assign → walks in', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' })
         ]);
-        // align interactive hit area with visual background rectangle
-        mr.setSize(270, 40).setInteractive(new Phaser.Geom.Rectangle(-145, -26, 290, 52), Phaser.Geom.Rectangle.Contains).setInteractive({ useHandCursor: true });
-        mr.on('pointerdown', () => this.hire(mid)); // reuse hire which now checks roster
+        // roster row hitbox: invisible Zone exactly over the visual bg rect.
+        // The row container itself is NOT made interactive: container input
+        // hit-tests ~20px above the container in this Phaser build (verified
+        // by sweep), so an explicit Zone gives the pixel-exact hit region.
+        const hz = this.add.zone(SX + 165, y, 270, 40).setInteractive({ useHandCursor: true });
+        hz.on('pointerdown', () => this.hire(mid)); // reuse hire which now checks roster
         this.sideC.add(mr);
+        this.sideC.add(hz);
         y += 46;
       }
     }
@@ -771,6 +775,7 @@ class Office extends Phaser.Scene {
           if (st.failMarker) { st.failMarker.destroy(); st.failMarker = null; }
           // detach debug handler and reattach fire handler
           st.spr.off('pointerdown', debugHandler);
+          st.debugHandler = null;
           st.spr.on('pointerdown', () => self.fire(st));
           overlay.destroy();
           modal.destroy();
@@ -780,6 +785,7 @@ class Office extends Phaser.Scene {
           if (st.failMarker) { st.failMarker.destroy(); st.failMarker = null; }
           // detach debug handler and reattach fire handler
           st.spr.off('pointerdown', debugHandler);
+          st.debugHandler = null;
           st.spr.on('pointerdown', () => self.fire(st));
           overlay.destroy();
           modal.destroy();
