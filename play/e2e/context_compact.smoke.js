@@ -33,8 +33,10 @@ const { chromium } = require('playwright');
 
   // Call compact on first staff member
   await page.evaluate(() => { window.__tt.scene.compact(window.__tt.state.staff[0]); });
-  await page.waitForTimeout(2500);
-
+  await page.waitForFunction(() => {
+    const st = window.__tt.state.staff[0];
+    return st.contextFill === 0 && st.risk === 0 && st.busy === false;
+  }, null, { timeout: 60000, polling: 500 });
   // After compact, expect contextFill, risk, busy to be zero
   const after = await page.evaluate(() => ({
     cf: window.__tt.state.staff[0].contextFill,
