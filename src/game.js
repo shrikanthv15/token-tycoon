@@ -14,7 +14,7 @@ class MainScene extends Phaser.Scene {
     this.add.rectangle(width/2, height/2, width*0.9, height*0.9, 0x001a33).setStrokeStyle(2, 0x00ffff);
     this.add.text(20,20, 'Token Tycoon v1 prototype', {font: '24px monospace', fill:'#0ff'});
     // Department HUD label
-    this.deptHud = this.add.text(20,150, 'Current: Dept 1', {font: '20px monospace', fill:'#0ff'});
+    this.deptHud = this.add.text(20,70, 'Current: Dept 1', {font: '20px monospace', fill:'#0ff'});
     // Add placeholder belt
     this.add.rectangle(width/2, height-100, width*0.8, 50, 0x003355).setOrigin(0.5);
     // Model roster cards (7 models)
