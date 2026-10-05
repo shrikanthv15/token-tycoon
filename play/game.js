@@ -315,19 +315,19 @@ class Office extends Phaser.Scene {
       for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
       const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
       // pool meters (text)
-      const h5Text = this.add.text(0, -78, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
-      const wkText = this.add.text(0, -62, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
-      const h5Timer = this.add.text(0, -48, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
-      const wkTimer = this.add.text(0, -34, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
-      // visual divider linking meters to desk
-      const divider = this.add.graphics();
-      divider.lineStyle(1, 0x8b98ad, 0.5).strokeLineShape(new Phaser.Geom.Line(-30, -10, 30, -10));
+      const h5Text = this.add.text(0, -150, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const wkText = this.add.text(0, -134, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
+      const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
+      // DELETED visual divider
+      // DELETED visual divider
+      // DELETED visual divider
       // pool meters (bars)
       const h5BarBg = this.add.graphics();
-      h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -40, 56, 8);
+      h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -112, 56, 8);
       const h5Bar = this.add.graphics();
       const wkBarBg = this.add.graphics();
-      wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -28, 56, 8);
+      wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -100, 56, 8);
       const wkBar = this.add.graphics();
       c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
       const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx: i, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg };
@@ -917,11 +917,11 @@ class Office extends Phaser.Scene {
       const caps = SUBS[subId];
       if (desk.h5Bar && caps) {
         const pct = caps.h5 ? sub.h5 / caps.h5 : 0;
-        desk.h5Bar.fillStyle(0xf5b942, 1).fillRect(-28, -40, 56 * pct, 8);
+        desk.h5Bar.fillStyle(0xf5b942, 1).fillRect(-28, -112, 56 * pct, 8);
       }
       if (desk.wkBar && caps) {
         const pct = caps.wk ? sub.wk / caps.wk : 0;
-        desk.wkBar.fillStyle(0xf5b942, 1).fillRect(-28, -28, 56 * pct, 8);
+        desk.wkBar.fillStyle(0xf5b942, 1).fillRect(-28, -100, 56 * pct, 8);
       }
       // timers
       const totalWeek = DAYS_PER_WEEK * DAY_LEN;
