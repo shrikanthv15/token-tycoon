@@ -503,7 +503,8 @@ class Office extends Phaser.Scene {
           this.add.text(-120, -12, `${m.name}  ${'★'.repeat(m.cap)}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#eceff4' }),
           this.add.text(-120, 6, 'click to assign → walks in', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' })
         ]);
-        mr.setSize(270, 40).setInteractive({ useHandCursor: true });
+        // align interactive hit area with visual background rectangle
+        mr.setSize(270, 40).setInteractive(new Phaser.Geom.Rectangle(-145, -26, 290, 52), Phaser.Geom.Rectangle.Contains).setInteractive({ useHandCursor: true });
         mr.on('pointerdown', () => this.hire(mid)); // reuse hire which now checks roster
         this.sideC.add(mr);
         y += 46;
