@@ -206,8 +206,20 @@ class Office extends Phaser.Scene {
       kb.fillStyle(0x8b98ad, 1);
       for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
       const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
-      c.add([top, mon, kb, plate]);
-      const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx: i };
+      // pool meters (text)
+      const h5Text = this.add.text(0, -30, '', { fontFamily: 'Courier New', fontSize: '10px', color: '#f5b942' }).setOrigin(0.5);
+      const wkText = this.add.text(0, -18, '', { fontFamily: 'Courier New', fontSize: '10px', color: '#f5b942' }).setOrigin(0.5);
+      const h5Timer = this.add.text(0, -6, '', { fontFamily: 'Courier New', fontSize: '9px', color: '#8b98ad' }).setOrigin(0.5);
+      const wkTimer = this.add.text(0, 6, '', { fontFamily: 'Courier New', fontSize: '9px', color: '#8b98ad' }).setOrigin(0.5);
+      // pool meters (bars)
+      const h5BarBg = this.add.graphics();
+      h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -40, 56, 8);
+      const h5Bar = this.add.graphics();
+      const wkBarBg = this.add.graphics();
+      wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -28, 56, 8);
+      const wkBar = this.add.graphics();
+      c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
+      const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx: i, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg };
       c.setSize(168, 84).setInteractive({ useHandCursor: true });
       c.on('pointerdown', () => this.toggleDeskDept(i));
       return deskObj;
@@ -576,8 +588,54 @@ class Office extends Phaser.Scene {
       g.fillStyle(0xf5b942, 1).fillRect(st.desk.x - 30, st.desk.y - 100, 60 * p, 8);
       if (p >= 1) { const m = MODELS[st.model], j = st.job; const fit = m.cap - j.stars; const fail = Math.max(0.03, 0.10 - fit * 0.06 + (j.stars - 1) * 0.03); this.completeJob(st, Math.random() > fail); }
     }
+    this.updatePoolMeters();
   }
-  weeklyTick() {
+   // ---- pool meters update ----
+   updatePoolMeters() {
+    const S = this.S;
+    for (const desk of this.deskObjs) {
+      // clear texts
+      desk.h5Text.setText('');
+      desk.wkText.setText('');
+      desk.h5Timer.setText('');
+      desk.wkTimer.setText('');
+      // clear bars
+      if (desk.h5Bar) desk.h5Bar.clear();
+      if (desk.wkBar) desk.wkBar.clear();
+      if (!desk.taken) continue;
+      const staff = S.staff.find(s => s.desk === desk);
+      if (!staff) continue;
+      const subId = MODELS[staff.model].sub;
+      const sub = S.subs[subId];
+      if (!sub) continue;
+      // pool amounts
+      desk.h5Text.setText(`5h: ${sub.h5}`);
+      desk.wkText.setText(`Wk: ${sub.wk}`);
+      // bars fill proportionally to max caps
+      const caps = SUBS[subId];
+      if (desk.h5Bar && caps) {
+        const pct = caps.h5 ? sub.h5 / caps.h5 : 0;
+        desk.h5Bar.fillStyle(0xf5b942, 1).fillRect(-28, -40, 56 * pct, 8);
+      }
+      if (desk.wkBar && caps) {
+        const pct = caps.wk ? sub.wk / caps.wk : 0;
+        desk.wkBar.fillStyle(0xf5b942, 1).fillRect(-28, -28, 56 * pct, 8);
+      }
+      // timers
+      const totalWeek = DAYS_PER_WEEK * DAY_LEN;
+      const elapsed = (S.day - 1) * DAY_LEN + S.dayT;
+      const weekRem = Math.max(0, totalWeek - elapsed);
+      const weekMin = Math.floor(weekRem / 60);
+      const weekSec = Math.floor(weekRem % 60);
+      desk.wkTimer.setText(`reset in ${weekMin}:${weekSec.toString().padStart(2,'0')}`);
+      const period = 5 * DAY_LEN;
+      const periodRem = Math.max(0, period - (elapsed % period));
+      const pMin = Math.floor(periodRem / 60);
+      const pSec = Math.floor(periodRem % 60);
+      desk.h5Timer.setText(`reset in ${pMin}:${pSec.toString().padStart(2,'0')}`);
+    }
+   }
+   weeklyTick() {
     const S = this.S;
     const burn = this.weeklyBurn();
     S.cash -= burn; S.spent += burn;
