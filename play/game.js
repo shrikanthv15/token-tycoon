@@ -21,6 +21,24 @@ const MODELS = {
 const JOB_TITLES = ['Fix login bug','Write API docs','Refactor auth module','Build landing page',
   'Triage 50 tickets','Migrate database','Add dark mode','Optimize slow queries','Write test suite',
   'Set up CI pipeline','Debug memory leak','Localize onboarding','Audit permissions','Speed up search'];
+
+// Parallel array of rich multi-line descriptions for each job title.
+const JOB_DESCRIPTIONS = [
+  'Fix the critical login bug causing 5% of users to be locked out.\nEnsure authentication flow works across browsers.',
+  'Write comprehensive API documentation for the new endpoints.\nInclude examples and error handling.',
+  'Refactor the authentication module to improve security and maintainability.',
+  'Build a responsive landing page with modern UI components and SEO.',
+  'Triage 50 incoming tickets, prioritize bugs, and assign to developers.',
+  'Migrate the legacy database to the new schema with zero downtime.',
+  'Add dark mode toggle throughout the app, respecting user settings.',
+  'Optimize slow query performance by adding indexes and caching.',
+  'Write a full test suite covering unit, integration, and end‑to‑end tests.',
+  'Set up CI pipeline with linting, testing, and deployment steps.',
+  'Debug memory leak in the analytics module causing increased RAM usage.',
+  'Localize onboarding flow for French and Spanish markets.',
+  'Audit permissions across services to tighten security.',
+  'Speed up search functionality with improved indexing and caching.',
+];
 const DAY_LEN = 30;          // seconds per game day
 const DAYS_PER_WEEK = 7;
 const RENT = 20;             // $/week for the room
@@ -56,7 +74,6 @@ function personFrame(shirt, frame) {
     ...legs,
   ];
   if (frame >= 3) {
-    // seated: torso + hands over the keyboard; hands jiggle while typing
     const hands = { 3: '....NN..NN..', 4: '...NN...NN...', 5: '....NN.NN...' }[frame];
     return rows.slice(0, 11).concat([hands]);
   }
@@ -90,7 +107,7 @@ function freshState() {
     cash: 100, day: 1, week: 1, dayT: 0, speed: 1, over: false,
     subs: {},          // id -> {h5, wk}
     staff: [],         // {model, desk, sprite, busy, job}
-    jobs: [],          // inbox job cards {id,title,stars,pay,card}
+    jobs: [],          // inbox job cards {id,title,stars,pay,card,description}
     revenue: 0, spent: 0, nextJobIn: 8,
     jobSeq: 1, done: 0, failed: 0,
     departments: [],   // {name:string, desks:[deskIdx]}
@@ -166,25 +183,20 @@ class Office extends Phaser.Scene {
     dw.fillStyle(0x4a3220, 1).fillRect(DOOR.x - 46, OY + OH - 4, 92, 30);
     this.add.text(DOOR.x, OY + OH + 13, 'DOOR', { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' }).setOrigin(0.5);
     // desks
-    // desks creation
     this.deskObjs = DESKS.map((d, i) => {
       const c = this.add.container(d.x, d.y).setDepth(10);
       const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
-      // monitor (off to the left so the seated person is visible)
       const mon = this.add.graphics();
       mon.fillStyle(0x1a1e28, 1).fillRect(-78, -52, 52, 34);
       mon.fillStyle(0x58c4dc, 0.85).fillRect(-74, -48, 44, 26);
       mon.fillStyle(0x1a1e28, 1).fillRect(-56, -18, 8, 10);
-      // keyboard (centered under the seated person's hands)
       const kb = this.add.graphics();
       kb.fillStyle(0xdfe6ee, 1).fillRect(-14, 22, 48, 12);
       kb.fillStyle(0x8b98ad, 1);
       for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
-      // name plate
       const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
       c.add([top, mon, kb, plate]);
       const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx: i };
-      // make desk interactive for department assignment
       c.setSize(168, 84).setInteractive({ useHandCursor: true });
       c.on('pointerdown', () => this.toggleDeskDept(i));
       return deskObj;
@@ -194,12 +206,12 @@ class Office extends Phaser.Scene {
       const ch = this.add.graphics().setDepth(8);
       const x = d.x, b = d.y - 28;
       ch.fillStyle(0x2a3140, 1);
-      ch.fillRect(x - 13, b - 64, 26, 48);   // backrest (peeks above the head)
-      ch.fillRect(x - 17, b - 18, 34, 10);   // seat (tucks under the torso)
-      ch.fillRect(x - 3, b - 8, 6, 20);       // post
-      ch.fillRect(x - 16, b + 10, 32, 6);     // base
+      ch.fillRect(x - 13, b - 64, 26, 48);
+      ch.fillRect(x - 17, b - 18, 34, 10);
+      ch.fillRect(x - 3, b - 8, 6, 20);
+      ch.fillRect(x - 16, b + 10, 32, 6);
       ch.fillStyle(0x39424f, 1);
-      ch.fillRect(x - 13, b - 64, 26, 8);     // backrest top highlight
+      ch.fillRect(x - 13, b - 64, 26, 8);
     });
   }
 
@@ -277,16 +289,17 @@ class Office extends Phaser.Scene {
       return;
     }
     S.jobs.forEach((j, i) => {
-      const y = 130 + i * 96;
+      const y = 130 + i * 140; // increased spacing for description
       const card = this.add.container(SX + 165, y);
       const bg = this.add.graphics();
-      bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -40, 290, 80, 8);
-      bg.lineStyle(2, 0xf5b942, 1).strokeRoundedRect(-145, -40, 290, 80, 8);
-      const title = this.add.text(-130, -28, j.title, { fontFamily: 'Courier New', fontSize: '14px', color: '#eceff4', fontStyle: 'bold' });
-      const meta = this.add.text(-130, -4, '★'.repeat(j.stars) + `  $${j.pay}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' });
-      const hint = this.add.text(-130, 18, 'drag onto a person', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
-      card.add([bg, title, meta, hint]);
-      card.setInteractive(new Phaser.Geom.Rectangle(-145, -40, 290, 80), Phaser.Geom.Rectangle.Contains);
+      bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -60, 290, 120, 8);
+      bg.lineStyle(2, 0xf5b942, 1).strokeRoundedRect(-145, -60, 290, 120, 8);
+      const title = this.add.text(-130, -48, j.title, { fontFamily: 'Courier New', fontSize: '14px', color: '#eceff4', fontStyle: 'bold' });
+      const desc = this.add.text(-130, -30, j.description || '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad', wordWrap: { width: 260 } });
+      const meta = this.add.text(-130, 4, '★'.repeat(j.stars) + `  $${j.pay}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' });
+      const hint = this.add.text(-130, 28, 'drag onto a person', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
+      card.add([bg, title, desc, meta, hint]);
+      card.setInteractive(new Phaser.Geom.Rectangle(-145, -60, 290, 120), Phaser.Geom.Rectangle.Contains);
       this.input.setDraggable(card);
       card.setData('jobId', j.id);
       card.on('dragstart', () => card.setScale(1.05).setDepth(100));
@@ -341,7 +354,6 @@ class Office extends Phaser.Scene {
         y += 8;
       }
     }
-    // staff list with fire buttons
     if (S.staff.length) {
       this.sideC.add(this.add.text(SX + 20, y, 'STAFF (click to fire):', { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' }));
       y += 24;
@@ -358,7 +370,6 @@ class Office extends Phaser.Scene {
   renderDept(SX) {
     const S = this.S;
     let y = 130;
-    // List existing departments
     S.departments.forEach((dept, idx) => {
       const row = this.add.container(SX + 165, y);
       const bg = this.add.graphics();
@@ -368,7 +379,6 @@ class Office extends Phaser.Scene {
         this.add.text(-130, -18, dept.name, { fontFamily: 'Courier New', fontSize: '15px', color: '#eceff4', fontStyle: 'bold' }),
         this.add.text(-130, 4, `Desks: ${dept.desks.length}`, { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
       ]);
-      // make row selectable
       row.setSize(290, 52).setInteractive({ useHandCursor: true });
       row.on('pointerdown', () => this.setCurrentDept(dept));
       if (dept.unlocks && dept.unlocks.length) {
@@ -379,12 +389,10 @@ class Office extends Phaser.Scene {
       this.sideC.add(row);
       y += 62;
     });
-    // Button to create new department
     const newBtn = this.add.text(SX + 165, y, '[ CREATE DEPT ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942', fontStyle: 'bold' })
       .setInteractive({ useHandCursor: true });
     newBtn.on('pointerdown', () => this.createDepartment());
     this.sideC.add(newBtn);
-    // highlight selected dept name
     if (this.currentDept) {
       this.sideC.add(this.add.text(SX + 10, 100, 'Current: ' + this.currentDept.name, { fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942' }));
     }
@@ -395,7 +403,6 @@ class Office extends Phaser.Scene {
     if (!name) return;
     if (this.S.departments.some(d => d.name === name)) { alert('Name exists'); return; }
     this.S.departments.push({ name, desks: [], unlocks: ['batch', 'pool'] });
-    // refresh DEPT view
     this.renderDept(950);
   }
 
@@ -411,38 +418,30 @@ class Office extends Phaser.Scene {
     const S = this.S, m = MODELS[mid];
     if (!S.subs[m.sub] || S.staff.some(s => s.model === mid) || S.over) return;
     const desk = this.deskObjs.find(d => !d.taken);
-    if (!desk) return; // no free desk
+    if (!desk) return;
     desk.taken = true;
     desk.plate.setText(m.name.toUpperCase());
-    // person walks in through the door
     const spr = this.add.image(DOOR.x, DOOR.y + 20, 'p_' + mid + '0').setScale(3).setDepth(15);
     const st = { model: mid, desk, spr, busy: false, job: null, frame: 0, walkT: 0 };
     S.staff.push(st);
-    // click person to fire
     spr.setInteractive({ useHandCursor: true });
     spr.on('pointerdown', () => this.fire(st));
-    // walk to desk
     this.tweens.add({
       targets: spr, x: desk.x, y: desk.y + 66, duration: 1400, ease: 'Linear',
       onUpdate: () => {
         st.walkT += 1;
         if (st.walkT % 12 === 0) { st.frame = st.frame === 1 ? 2 : 1; spr.setTexture('p_' + mid + st.frame); }
       },
-      onComplete: () => {
-        this.sitDown(st);
-      },
+      onComplete: () => { this.sitDown(st); },
     });
     this.renderSidebar();
   }
   sitDown(st) {
-    // seated pose: torso+hands frame on the chair, gentle idle breathing
     const spr = st.spr, mid = st.model;
     spr.setTexture('p_' + mid + '3').setDepth(9);
     spr.y = st.desk.y - 64;
     if (st.idle) st.idle.stop();
-    st.idle = this.tweens.add({
-      targets: spr, y: st.desk.y - 66, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
+    st.idle = this.tweens.add({ targets: spr, y: st.desk.y - 66, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }
   fire(st) {
     const S = this.S;
@@ -469,20 +468,16 @@ class Office extends Phaser.Scene {
       this.flashText(deskObj.x, deskObj.y - 118, 'POOL DRY', '#f87171');
       this.renderSidebar(); return;
     }
-    // Department passive unlocks check
     if (this.currentDept && this.currentDept.unlocks.includes('batch')) {
-      // batch processing reduces cost by 10%
       cost = Math.round(cost * 0.9);
     }
     sub.h5 -= cost; sub.wk -= cost;
     S.jobs = S.jobs.filter(x => x !== j);
     st.busy = true; st.job = j;
-    // progress bar above person
     const bar = this.add.graphics().setDepth(30);
     st.bar = bar;
     const dur = (j.stars === 1 ? 40 : j.stars === 2 ? 65 : 100) * 1000;
     st.workT = 0; st.workDur = dur;
-    // typing: hands alternate frames, body bounces at the keyboard
     if (st.idle) st.idle.stop();
     st.spr.y = st.desk.y - 64;
     st.spr.setTexture('p_' + st.model + '4');
@@ -499,7 +494,7 @@ class Office extends Phaser.Scene {
     if (success) {
       S.cash += j.pay; S.revenue += j.pay; S.done++;
       this.flashText(st.desk.x, st.desk.y - 118, `+$${j.pay}`, '#4ade80');
-      this.tweens.add({ targets: st.spr, y: '-=10', duration: 160, yoyo: true, repeat: 1 }); // happy hop
+      this.tweens.add({ targets: st.spr, y: '-=10', duration: 160, yoyo: true, repeat: 1 });
     } else {
       S.failed++;
       this.flashText(st.desk.x, st.desk.y - 118, 'FAILED', '#f87171');
@@ -514,74 +509,53 @@ class Office extends Phaser.Scene {
   spawnJob(stars, pay) {
     const S = this.S;
     if (S.jobs.length >= 5 || S.over) return;
+    const index = Math.floor(Math.random() * JOB_TITLES.length);
     stars = stars || (1 + Math.floor(Math.random() * 3));
     pay = pay || (stars === 1 ? 8 + Math.floor(Math.random() * 5) : stars === 2 ? 15 + Math.floor(Math.random() * 11) : 30 + Math.floor(Math.random() * 21));
-    S.jobs.push({ id: S.jobSeq++, title: JOB_TITLES[Math.floor(Math.random() * JOB_TITLES.length)], stars, pay });
+    const title = JOB_TITLES[index];
+    const description = JOB_DESCRIPTIONS[index] || '';
+    S.jobs.push({ id: S.jobSeq++, title, description, stars, pay });
     if (this.tab === 'inbox') this.renderSidebar();
   }
-
   // ----- main loop -----
   update(time, delta) {
     const S = this.S;
     if (S.over || S.speed === 0) return;
     const dt = (delta / 1000) * S.speed;
-    // clock
     S.dayT += dt;
     if (S.dayT >= DAY_LEN) {
       S.dayT = 0; S.day++;
-      if (S.day > DAYS_PER_WEEK) {
-        S.day = 1; S.week++;
-        this.weeklyTick();
-      }
+      if (S.day > DAYS_PER_WEEK) { S.day = 1; S.week++; this.weeklyTick(); }
       this.refreshTop();
     }
-    // job spawner
     S.nextJobIn -= dt;
     if (S.nextJobIn <= 0) { this.spawnJob(); S.nextJobIn = 18 + Math.random() * 14; }
-    // work progress
     for (const st of S.staff) {
       if (!st.busy) continue;
-      // typing hands: alternate the two typing frames
       st.typeT = (st.typeT || 0) + delta * S.speed;
-      if (st.typeT > 160) {
-        st.typeT = 0;
-        st.typeF = st.typeF === 4 ? 5 : 4;
-        st.spr.setTexture('p_' + st.model + st.typeF);
-      }
+      if (st.typeT > 160) { st.typeT = 0; st.typeF = st.typeF === 4 ? 5 : 4; st.spr.setTexture('p_' + st.model + st.typeF); }
       st.workT += delta * S.speed;
       const p = Math.min(1, st.workT / st.workDur);
       const g = st.bar; g.clear();
       g.fillStyle(0x1f2a3f, 1).fillRect(st.desk.x - 30, st.desk.y - 100, 60, 8);
       g.fillStyle(0xf5b942, 1).fillRect(st.desk.x - 30, st.desk.y - 100, 60 * p, 8);
-      if (p >= 1) {
-        const m = MODELS[st.model], j = st.job;
-        const fit = m.cap - j.stars; // >=0 good
-        const fail = Math.max(0.03, 0.10 - fit * 0.06 + (j.stars - 1) * 0.03);
-        this.completeJob(st, Math.random() > fail);
-      }
+      if (p >= 1) { const m = MODELS[st.model], j = st.job; const fit = m.cap - j.stars; const fail = Math.max(0.03, 0.10 - fit * 0.06 + (j.stars - 1) * 0.03); this.completeJob(st, Math.random() > fail); }
     }
   }
   weeklyTick() {
     const S = this.S;
     const burn = this.weeklyBurn();
     S.cash -= burn; S.spent += burn;
-    // reset weekly pools
     for (const [sid, p] of Object.entries(S.subs)) { p.h5 = SUBS[sid].h5; p.wk = SUBS[sid].wk; }
-    // apply shared pool boost from departments
     if (this.S.departments.some(d => d.unlocks && d.unlocks.includes('pool'))) {
-      for (const [sid, p] of Object.entries(S.subs)) {
-        // increase both pools by 10%
-        p.h5 = Math.round(p.h5 * 1.1);
-        p.wk = Math.round(p.wk * 1.1);
-      }
+      for (const [sid, p] of Object.entries(S.subs)) { p.h5 = Math.round(p.h5 * 1.1); p.wk = Math.round(p.wk * 1.1); }
     }
     if (S.cash < 0) return this.gameOver();
     this.flashText(475, 400, `WEEK ${S.week} — bills paid: $${burn}`, '#f5b942');
     this.refreshTop();
   }
   gameOver() {
-    const S = this.S;
-    S.over = true;
+    const S = this.S; S.over = true;
     const o = this.add.container(0, 0).setDepth(200);
     const bg = this.add.graphics();
     bg.fillStyle(0x0a0d13, 0.88).fillRect(0, 0, 1280, 800);
@@ -598,7 +572,6 @@ class Office extends Phaser.Scene {
     btn.on('pointerdown', () => this.scene.restart());
     o.add(btn);
   }
-
   // ----- test hooks -----
   exposeHooks() {
     window.__tt = {
