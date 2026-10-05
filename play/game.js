@@ -113,6 +113,10 @@ function freshState() {
     jobSeq: 1, done: 0, failed: 0,
     departments: [],   // {name:string, desks:[deskIdx]}
     roster: [],        // unassigned models {model, id}
+    quarter: 1,
+    quarterWeeks: 0,
+    profitTarget: 20,
+    quarterStartCash: 100,
   };
 }
 
@@ -246,6 +250,9 @@ class Office extends Phaser.Scene {
     this.cashT = this.add.text(20, 20, '', { fontFamily: 'Courier New', fontSize: '24px', color: '#4ade80', fontStyle: 'bold' });
     this.clockT = this.add.text(220, 22, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#8b98ad' });
     this.burnT = this.add.text(430, 22, '', { fontFamily: 'Courier New', fontSize: '15px', color: '#f87171' });
+    // quarter timer and profit target
+    this.quarterT = this.add.text(620, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#ffbf00' });
+    this.profitT = this.add.text(770, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#66ff66' });
     const mk = (x, label, cb) => {
       const b = this.add.container(x, 32);
       const bg = this.add.graphics();
@@ -262,7 +269,7 @@ class Office extends Phaser.Scene {
     this.refreshTop();
   }
   weeklyBurn() {
-    let b = RENT;
+    let b = RENT + (this.quarterRentIncrease || 0);
     for (const id of Object.keys(this.S.subs)) b += SUBS[id].price;
     return b;
   }
@@ -272,6 +279,12 @@ class Office extends Phaser.Scene {
     this.cashT.setColor(S.cash < 40 ? '#f87171' : '#4ade80');
     this.clockT.setText(`WEEK ${S.week} · DAY ${S.day}/7`);
     this.burnT.setText(`burn -$${this.weeklyBurn()}/wk`);
+    // quarter timer display (13 weeks per quarter)
+    const weeksLeft = Math.max(0, 13 - S.quarterWeeks);
+    this.quarterT.setText(`Q${S.quarter} ${weeksLeft}w`);
+    // profit progress display
+    const profitSoFar = Math.round(S.cash - S.quarterStartCash);
+    this.profitT.setText(`$${profitSoFar}/${S.profitTarget}`);
   }
 
   // ----- sidebar -----
@@ -646,6 +659,9 @@ class Office extends Phaser.Scene {
     if (S.cash < 0) return this.gameOver();
     this.flashText(475, 400, `WEEK ${S.week} — bills paid: $${burn}`, '#f5b942');
     this.refreshTop();
+    // quarter progression
+    S.quarterWeeks += 1;
+    if (S.quarterWeeks >= 13) this.evaluateQuarter();
   }
   gameOver() {
     const S = this.S; S.over = true;
@@ -665,6 +681,49 @@ class Office extends Phaser.Scene {
     btn.on('pointerdown', () => this.scene.restart());
     o.add(btn);
   }
+
+  evaluateQuarter() {
+    const S = this.S;
+    const profit = Math.round(S.cash - S.quarterStartCash);
+    if (profit >= S.profitTarget) {
+      // win
+      S.quarter += 1;
+      // increase rent for next quarter
+      this.quarterRentIncrease = Math.round(RENT * 0.1 * (S.quarter - 1));
+      // raise profit target
+      S.profitTarget += 10;
+      // reset quarter tracking
+      S.quarterStartCash = S.cash;
+      S.quarterWeeks = 0;
+      this.showQuarterWin(profit);
+    } else {
+      // lose – use existing BANKRUPT overlay
+      this.gameOver();
+    }
+    this.refreshTop();
+  }
+
+  showQuarterWin(profit) {
+    const S = this.S;
+    const overlay = this.add.container(0, 0).setDepth(200);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a0d13, 0.88).fillRect(0, 0, 1280, 800);
+    overlay.add([bg,
+      this.add.text(640, 250, 'QUARTER WON', { fontFamily: 'Courier New', fontSize: '48px', color: '#66ff66', fontStyle: 'bold' }).setOrigin(0.5),
+      this.add.text(640, 320, `Profit $${profit} met target $${S.profitTarget - 10}`, { fontFamily: 'Courier New', fontSize: '20px', color: '#eceff4' }).setOrigin(0.5),
+      this.add.text(640, 380, `Next quarter rent ↑ $${this.quarterRentIncrease || 0}`, { fontFamily: 'Courier New', fontSize: '18px', color: '#ffbf00' }).setOrigin(0.5)
+    ]);
+    const btn = this.add.container(640, 460);
+    const bbg = this.add.graphics();
+    bbg.fillStyle(0xf5b942, 1).fillRoundedRect(-110, -28, 220, 56, 10);
+    btn.add([bbg, this.add.text(0, 0, 'CONTINUE', { fontFamily: 'Courier New', fontSize: '20px', color: '#111111', fontStyle: 'bold' }).setOrigin(0.5)]);
+    btn.setSize(220, 56).setInteractive({ useHandCursor: true });
+    btn.on('pointerdown', () => {
+      overlay.destroy();
+    });
+    overlay.add(btn);
+  }
+
 
   // ----- persistence helpers -----
   _snapshot() {
