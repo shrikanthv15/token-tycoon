@@ -5,7 +5,11 @@
 'use strict';
 
   // Feature flag for Nemotron bridge
-let NEMOTRON_ENABLED = false;
+// Remove local NEMOTRON_ENABLED flag and add helper
+function isNemotronEnabled(){
+  return typeof window !== 'undefined' && window.NemotronBridge && window.NemotronBridge.isEnabled();
+}
+
 
 // ---------- data ----------
 const SUBS = {
@@ -782,42 +786,47 @@ class Office extends Phaser.Scene {
       .setOrigin(0.5).setDepth(60);
     this.tweens.add({ targets: t, y: y - 30, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
   }
-  spawnJob(stars, pay, title=null, description=null) {
+  spawnJob(stars = null, pay = null, title = null, description = null) {
     const S = this.S;
     if (S.jobs.length >= 5 || S.over) return;
     // If Nemotron bridge enabled, try remote job generation
-    if (NEMOTRON_ENABLED && typeof window.NemotronBridge !== 'undefined' && window.NemotronBridge.isEnabled()) {
-      try {
-        // Prepare a minimal world snapshot (could be full state or subset)
-        const snapshot = { cash: S.cash, day: S.day, week: S.week, staffCount: S.staff.length };
-        const remoteJobs = window.NemotronBridge.requestJobs(snapshot);
-        // requestJobs returns a promise; we need async handling – but spawnJob is sync.
-        // Instead, make spawnJob async by returning a promise and adjust callers.
-        // We'll handle fallback synchronously if promise not awaited.
-      } catch(e) {
-        // ignore and fall back to local generation
-      }
-    }
-    if (NEMOTRON_ENABLED && typeof window.NemotronBridge !== 'undefined' && window.NemotronBridge.isEnabled()) {
-      try {
-        // Prepare a minimal world snapshot (could be full state or subset)
-        const snapshot = { cash: S.cash, day: S.day, week: S.week, staffCount: S.staff.length };
-        const remoteJobs = window.NemotronBridge.requestJobs(snapshot);
-        // If remoteJobs is a Promise, we cannot await here; assume sync for test.
+    if (isNemotronEnabled() && typeof window.NemotronBridge !== 'undefined' && typeof window.NemotronBridge.requestJobs === 'function') {
+      const snapshot = { cash: S.cash, day: S.day, week: S.week, staffCount: S.staff.length };
+      // requestJobs returns a promise
+      window.NemotronBridge.requestJobs(snapshot).then(remoteJobs => {
         if (Array.isArray(remoteJobs) && remoteJobs.length) {
-          const job = remoteJobs[0];
-          const finalTitle = job.title || title;
-          const finalDesc = job.description || description;
-          const finalStars = job.stars || stars;
-          const finalPay = job.pay || pay;
-          S.jobs.push({ id: S.jobSeq++, title: finalTitle, description: finalDesc, stars: finalStars, pay: finalPay });
+          remoteJobs.forEach(job => {
+            const finalTitle = job.title || title || 'Untitled';
+            const finalDesc = job.description || description || '';
+            const finalStars = job.stars || stars || 1;
+            const finalPay = job.pay || pay || 0;
+            S.jobs.push({ id: S.jobSeq++, title: finalTitle, description: finalDesc, stars: finalStars, pay: finalPay });
+          });
           if (this.tab === 'inbox') this.renderSidebar();
-          return;
+        } else {
+          // fallback to local generation
+          this._localSpawnJob(stars, pay, title, description);
         }
-      } catch(e) {
-        // ignore and fall back to local generation
-      }
+      }).catch(() => {
+        // network or other error – fallback locally
+        this._localSpawnJob(stars, pay, title, description);
+      });
+      return; // async handling will add jobs later
     }
+    // Fallback local generation
+    this._localSpawnJob(stars, pay, title, description);
+  }
+
+  // Helper for local job generation (existing logic)
+  _localSpawnJob(stars = null, pay = null, title = null, description = null) {
+    const S = this.S;
+    // Determine defaults if not provided
+    const jobStars = stars || (Math.random() < 0.5 ? 1 : Math.random() < 0.5 ? 2 : 3);
+    const jobPay = pay || Math.round(10 + Math.random() * 40);
+    const jobTitle = title || JOB_TITLES[Math.floor(Math.random() * JOB_TITLES.length)];
+    const jobDesc = description || JOB_DESCRIPTIONS[JOB_TITLES.indexOf(jobTitle)] || '';
+    S.jobs.push({ id: S.jobSeq++, title: jobTitle, description: jobDesc, stars: jobStars, pay: jobPay });
+    if (this.tab === 'inbox') this.renderSidebar();
   }
   // ----- main loop -----
   update(time, delta) {

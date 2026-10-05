@@ -3,7 +3,10 @@
 (function(){
   const DEFAULT_ENDPOINT = '/api/generate-jobs';
   const TIMEOUT_MS = 3000;
-  let NEMOTRON_ENABLED = false; // feature flag – can be toggled in console // feature flag – off by default
+  let NEMOTRON_ENABLED = false; // feature flag – can be toggled via setEnabled
+
+function setEnabled(val){ NEMOTRON_ENABLED = !!val; }
+
 
   function validateJobs(jobs){
     if(!Array.isArray(jobs) || jobs.length>5) return false;
@@ -38,5 +41,5 @@
   }
 
   // expose globally for game.js to use
-  window.NemotronBridge = {requestJobs, isEnabled:()=>NEMOTRON_ENABLED};
+  window.NemotronBridge = {requestJobs, isEnabled:()=>NEMOTRON_ENABLED, setEnabled};
 })();
