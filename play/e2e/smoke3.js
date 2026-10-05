@@ -1,5 +1,5 @@
 // Token Tycoon v3 smoke test — run: node smoke3.js
-const { chromium } = require('/home/hatch/workspace/token-tycoon/play-v2/e2e/node_modules/playwright');
+const { chromium } = require('playwright');
 
 (async () => {
   const browser = await chromium.launch();

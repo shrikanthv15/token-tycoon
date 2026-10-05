@@ -93,6 +93,7 @@ function freshState() {
     jobs: [],          // inbox job cards {id,title,stars,pay,card}
     revenue: 0, spent: 0, nextJobIn: 8,
     jobSeq: 1, done: 0, failed: 0,
+    departments: [],   // {name:string, desks:[deskIdx]}
   };
 }
 
@@ -101,6 +102,7 @@ class Office extends Phaser.Scene {
   constructor() { super('office'); }
   create() {
     this.S = freshState();
+    this.currentDept = null;
     this.buildTextures();
     this.buildOffice();
     this.buildTopbar();
@@ -164,6 +166,7 @@ class Office extends Phaser.Scene {
     dw.fillStyle(0x4a3220, 1).fillRect(DOOR.x - 46, OY + OH - 4, 92, 30);
     this.add.text(DOOR.x, OY + OH + 13, 'DOOR', { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' }).setOrigin(0.5);
     // desks
+    // desks creation
     this.deskObjs = DESKS.map((d, i) => {
       const c = this.add.container(d.x, d.y).setDepth(10);
       const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
@@ -180,7 +183,11 @@ class Office extends Phaser.Scene {
       // name plate
       const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
       c.add([top, mon, kb, plate]);
-      return { x: d.x, y: d.y, c, plate, taken: false };
+      const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx: i };
+      // make desk interactive for department assignment
+      c.setSize(168, 84).setInteractive({ useHandCursor: true });
+      c.on('pointerdown', () => this.toggleDeskDept(i));
+      return deskObj;
     });
     // office chairs at each desk (depth 8: behind seated staff at 9, in front of floor)
     DESKS.forEach(d => {
@@ -248,6 +255,7 @@ class Office extends Phaser.Scene {
     };
     this.tabInbox = mkTab(SX + 24, 'INBOX', 'inbox');
     this.tabHire = mkTab(SX + 130, 'HIRE', 'hire');
+    this.tabDept = mkTab(SX + 236, 'DEPT', 'dept');
     this.sideC = this.add.container(0, 0).setDepth(20);
     this.renderSidebar();
   }
@@ -255,8 +263,11 @@ class Office extends Phaser.Scene {
     this.sideC.removeAll(true);
     this.tabInbox.setColor(this.tab === 'inbox' ? '#f5b942' : '#8b98ad');
     this.tabHire.setColor(this.tab === 'hire' ? '#f5b942' : '#8b98ad');
+    this.tabDept.setColor(this.tab === 'dept' ? '#f5b942' : '#8b98ad');
     const SX = 950;
-    if (this.tab === 'inbox') this.renderInbox(SX); else this.renderHire(SX);
+    if (this.tab === 'inbox') this.renderInbox(SX);
+    else if (this.tab === 'hire') this.renderHire(SX);
+    else if (this.tab === 'dept') this.renderDept(SX);
   }
   renderInbox(SX) {
     const S = this.S;
@@ -343,7 +354,52 @@ class Office extends Phaser.Scene {
     }
   }
 
-  // ----- economy / actions -----
+  // ----- department UI -----
+  renderDept(SX) {
+    const S = this.S;
+    let y = 130;
+    // List existing departments
+    S.departments.forEach((dept, idx) => {
+      const row = this.add.container(SX + 165, y);
+      const bg = this.add.graphics();
+      bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -26, 290, 52, 8);
+      bg.lineStyle(2, 0x4ade80, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
+      row.add([bg,
+        this.add.text(-130, -18, dept.name, { fontFamily: 'Courier New', fontSize: '15px', color: '#eceff4', fontStyle: 'bold' }),
+        this.add.text(-130, 4, `Desks: ${dept.desks.length}`, { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
+      ]);
+      // make row selectable
+      row.setSize(290, 52).setInteractive({ useHandCursor: true });
+      row.on('pointerdown', () => this.setCurrentDept(dept));
+      if (dept.unlocks && dept.unlocks.length) {
+        const u = this.add.text(-130, 20, 'Unlocks: ' + dept.unlocks.join(', '), { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
+        row.add(u);
+        y += 8;
+      }
+      this.sideC.add(row);
+      y += 62;
+    });
+    // Button to create new department
+    const newBtn = this.add.text(SX + 165, y, '[ CREATE DEPT ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942', fontStyle: 'bold' })
+      .setInteractive({ useHandCursor: true });
+    newBtn.on('pointerdown', () => this.createDepartment());
+    this.sideC.add(newBtn);
+    // highlight selected dept name
+    if (this.currentDept) {
+      this.sideC.add(this.add.text(SX + 10, 100, 'Current: ' + this.currentDept.name, { fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942' }));
+    }
+  }
+
+  createDepartment() {
+    const name = prompt('Enter department name:');
+    if (!name) return;
+    if (this.S.departments.some(d => d.name === name)) { alert('Name exists'); return; }
+    this.S.departments.push({ name, desks: [], unlocks: ['batch', 'pool'] });
+    // refresh DEPT view
+    this.renderDept(950);
+  }
+
+  // ----- economy -----
   buySub(sid) {
     const S = this.S, sub = SUBS[sid];
     if (S.subs[sid] || S.cash < sub.price || S.over) return;
@@ -408,10 +464,15 @@ class Office extends Phaser.Scene {
     const j = S.jobs.find(x => x.id === jobId);
     if (!st || !j || st.busy || S.over) { this.renderSidebar(); return; }
     const m = MODELS[st.model], sub = S.subs[m.sub];
-    const cost = Math.round(m.cost * (0.7 + 0.3 * j.stars));
+    let cost = Math.round(m.cost * (0.7 + 0.3 * j.stars));
     if (!sub || sub.h5 < cost || sub.wk < cost) {
       this.flashText(deskObj.x, deskObj.y - 118, 'POOL DRY', '#f87171');
       this.renderSidebar(); return;
+    }
+    // Department passive unlocks check
+    if (this.currentDept && this.currentDept.unlocks.includes('batch')) {
+      // batch processing reduces cost by 10%
+      cost = Math.round(cost * 0.9);
     }
     sub.h5 -= cost; sub.wk -= cost;
     S.jobs = S.jobs.filter(x => x !== j);
@@ -506,6 +567,14 @@ class Office extends Phaser.Scene {
     S.cash -= burn; S.spent += burn;
     // reset weekly pools
     for (const [sid, p] of Object.entries(S.subs)) { p.h5 = SUBS[sid].h5; p.wk = SUBS[sid].wk; }
+    // apply shared pool boost from departments
+    if (this.S.departments.some(d => d.unlocks && d.unlocks.includes('pool'))) {
+      for (const [sid, p] of Object.entries(S.subs)) {
+        // increase both pools by 10%
+        p.h5 = Math.round(p.h5 * 1.1);
+        p.wk = Math.round(p.wk * 1.1);
+      }
+    }
     if (S.cash < 0) return this.gameOver();
     this.flashText(475, 400, `WEEK ${S.week} — bills paid: $${burn}`, '#f5b942');
     this.refreshTop();
@@ -542,6 +611,8 @@ class Office extends Phaser.Scene {
       assign: (jobId, deskIdx) => this.assignJob(jobId, this.deskObjs[deskIdx]),
       desks: this.deskObjs,
       cash: () => Math.round(this.S.cash),
+      departments: this.S.departments,
+      currentDept: this.currentDept,
     };
   }
 }
