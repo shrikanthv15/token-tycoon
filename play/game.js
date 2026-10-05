@@ -107,8 +107,8 @@ function freshState() {
   return {
     cash: 100, day: 1, week: 1, dayT: 0, speed: 1, over: false,
     subs: {},          // id -> {h5, wk}
-    staff: [],         // {model, desk, sprite, busy, job}
-    jobs: [],          // inbox job cards {id,title,stars,pay,card,description}
+    staff: [],         // {model, desk, sprite, busy, job, contextFill}
+    jobs: [],          // inbox job cards {id,title,stars,pay,card}
     revenue: 0, spent: 0, nextJobIn: 8,
     jobSeq: 1, done: 0, failed: 0,
     departments: [],   // {name:string, desks:[deskIdx]}
@@ -384,6 +384,7 @@ class Office extends Phaser.Scene {
     this.sideC = this.add.container(0, 0).setDepth(20);
     this.renderSidebar();
   }
+  // ----- UI -----
   renderSidebar() {
     this.sideC.removeAll(true);
     this.tabInbox.setColor(this.tab === 'inbox' ? '#f5b942' : '#8b98ad');
@@ -394,6 +395,24 @@ class Office extends Phaser.Scene {
     else if (this.tab === 'hire') this.renderHire(SX);
     else if (this.tab === 'dept') this.renderDept(SX);
   }
+
+  // Compact action resets context and risk
+  compact(st) {
+    const S = this.S;
+    if (st.busy || S.over) return;
+    st.busy = true;
+    this.flashText(st.desk.x, st.desk.y - 118, 'COMPACTING', '#f5b942');
+    const duration = 2000; // ms
+    this.time.delayedCall(duration, () => {
+      st.contextFill = 0;
+      st.risk = 0;
+      st.busy = false;
+      this.sitDown(st);
+      this.refreshTop();
+    }, [], this);
+  }
+
+  // ----- job UI -----
   renderInbox(SX) {
     const S = this.S;
     if (!S.jobs.length) {
@@ -470,14 +489,26 @@ class Office extends Phaser.Scene {
         y += 46;
       }
     }
+    // staff list with fire buttons and context meters
     if (S.staff.length) {
       this.sideC.add(this.add.text(SX + 20, y, 'STAFF (click to fire):', { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' }));
       y += 24;
       S.staff.forEach(s => {
-        const t = this.add.text(SX + 20, y, `• ${MODELS[s.model].name}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#eceff4' })
+        const meter = Math.round(s.contextFill || 0);
+        const risk = Math.min(1, 0.03 + (meter / 100) * 0.5);
+        const bar = this.add.graphics();
+        bar.fillStyle(0x1f2a3f, 1).fillRect(SX + 200, y, 80, 8);
+        bar.fillStyle(risk > 0.5 ? 0xf5b942 : 0x4ade80, 1).fillRect(SX + 200, y, 80 * (meter / 100), 8);
+        const t = this.add.text(SX + 20, y, `• ${MODELS[s.model].name} (${meter}%)`, { fontFamily: 'Courier New', fontSize: '13px', color: '#eceff4' })
           .setInteractive({ useHandCursor: true });
         t.on('pointerdown', () => this.fire(s));
-        this.sideC.add(t); y += 22;
+        this.sideC.add([t, bar]);
+        if (meter > 0) {
+          const btn = this.add.text(SX + 300, y-2, '[COMPACT]', { fontFamily: 'Courier New', fontSize: '11px', color: '#f5b942' }).setInteractive({ useHandCursor: true });
+          btn.on('pointerdown', () => this.compact(s));
+          this.sideC.add(btn);
+        }
+        y += 22;
       });
     }
   }
@@ -579,7 +610,7 @@ class Office extends Phaser.Scene {
     desk.taken = true;
     desk.plate.setText(m.name.toUpperCase());
     const spr = this.add.image(DOOR.x, DOOR.y + 20, 'p_' + mid + '0').setScale(3).setDepth(15);
-    const st = { model: mid, desk, spr, busy: false, job: null, frame: 0, walkT: 0 };
+    const st = { model: mid, desk, spr, busy: false, job: null, contextFill: 0, frame: 0, walkT: 0 };
     S.staff.push(st);
     spr.setInteractive({ useHandCursor: true });
     spr.on('pointerdown', () => this.fire(st));
@@ -630,6 +661,11 @@ class Office extends Phaser.Scene {
     if (!st || !j || st.busy || S.over) { this.renderSidebar(); return; }
     const m = MODELS[st.model], sub = S.subs[m.sub];
     let cost = Math.round(m.cost * (0.7 + 0.3 * j.stars));
+    const fillInc = Math.min(100, Math.round(cost / 10));
+    st.contextFill = Math.min(100, (st.contextFill || 0) + fillInc);
+    const rawRisk = 0.03 + (st.contextFill / 100) * 0.5 + (m.cap - j.stars) * 0.1;
+    const risk = Math.max(0, Math.min(1, rawRisk));
+    st.risk = risk;
     if (!sub || sub.h5 < cost || sub.wk < cost) {
       this.flashText(deskObj.x, deskObj.y - 118, 'POOL DRY', '#f87171');
       this.renderSidebar(); return;
@@ -657,7 +693,12 @@ class Office extends Phaser.Scene {
     st.busy = false; st.job = null;
     if (st.bar) { st.bar.destroy(); st.bar = null; }
     this.sitDown(st);
-    if (success) {
+    // compute failure chance with hallucination risk
+    const baseFail = Math.max(0.03, 0.10 - (MODELS[st.model].cap - j.stars) * 0.06 + (j.stars - 1) * 0.03);
+    const riskFail = st.risk !== undefined ? st.risk : 0;
+    const finalFail = Math.max(baseFail, riskFail);
+    const didSucceed = Math.random() > finalFail;
+    if (didSucceed) {
       S.cash += j.pay; S.revenue += j.pay; S.done++;
       this.flashText(st.desk.x, st.desk.y - 118, `+$${j.pay}`, '#4ade80');
       this.tweens.add({ targets: st.spr, y: '-=10', duration: 160, yoyo: true, repeat: 1 });
@@ -697,7 +738,9 @@ class Office extends Phaser.Scene {
     S.nextJobIn -= dt;
     if (S.nextJobIn <= 0) { this.spawnJob(); S.nextJobIn = 18 + Math.random() * 14; }
     for (const st of S.staff) {
-      if (!st.busy) continue;
+      // Guard against staff without an active progress bar (e.g., after a compact action)
+      if (!st.busy || !st.bar) continue;
+      // typing hands: alternate the two typing frames
       st.typeT = (st.typeT || 0) + delta * S.speed;
       if (st.typeT > 160) { st.typeT = 0; st.typeF = st.typeF === 4 ? 5 : 4; st.spr.setTexture('p_' + st.model + st.typeF); }
       st.workT += delta * S.speed;
