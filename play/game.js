@@ -391,7 +391,8 @@ class Office extends Phaser.Scene {
     this.tab = 'inbox';
     const mkTab = (x, label, id) => {
       const t = this.add.text(x, 84, label, { fontFamily: 'Courier New', fontSize: '16px', color: '#8b98ad', fontStyle: 'bold' })
-        .setInteractive({ useHandCursor: true });
+        .setInteractive({ useHandCursor: true })
+        .setDepth(30); // PAN-35: tabs must render above job cards (sideC is depth 20; first card spans y70-190 over the tab bar at y84)
       t.on('pointerdown', () => { this.tab = id; this.renderSidebar(); });
       t.setData('id', id);
       return t;
