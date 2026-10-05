@@ -314,10 +314,10 @@ class Office extends Phaser.Scene {
       for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
       const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
       // pool meters (text)
-      const h5Text = this.add.text(0, -30, '', { fontFamily: 'Courier New', fontSize: '10px', color: '#f5b942' }).setOrigin(0.5);
-      const wkText = this.add.text(0, -18, '', { fontFamily: 'Courier New', fontSize: '10px', color: '#f5b942' }).setOrigin(0.5);
-      const h5Timer = this.add.text(0, -6, '', { fontFamily: 'Courier New', fontSize: '9px', color: '#8b98ad' }).setOrigin(0.5);
-      const wkTimer = this.add.text(0, 6, '', { fontFamily: 'Courier New', fontSize: '9px', color: '#8b98ad' }).setOrigin(0.5);
+      const h5Text = this.add.text(0, -80, '', { fontFamily: 'Courier New', fontSize: '10px', color: '#f5b942' }).setOrigin(0.5);
+      const wkText = this.add.text(0, -68, '', { fontFamily: 'Courier New', fontSize: '10px', color: '#f5b942' }).setOrigin(0.5);
+      const h5Timer = this.add.text(0, -56, '', { fontFamily: 'Courier New', fontSize: '9px', color: '#8b98ad' }).setOrigin(0.5);
+      const wkTimer = this.add.text(0, -44, '', { fontFamily: 'Courier New', fontSize: '9px', color: '#8b98ad' }).setOrigin(0.5);
       // pool meters (bars)
       const h5BarBg = this.add.graphics();
       h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -40, 56, 8);
@@ -364,12 +364,20 @@ class Office extends Phaser.Scene {
       b.add([bg, t]); b.setSize(60, 36).setInteractive({ useHandCursor: true });
       b.on('pointerdown', cb); b.on('pointerover', () => bg.clear().fillStyle(0x2a3852, 1).fillRoundedRect(-30, -18, 60, 36, 6));
       b.on('pointerout', () => bg.clear().fillStyle(0x1f2a3f, 1).fillRoundedRect(-30, -18, 60, 36, 6));
+      b._label = t; // store reference for dynamic updates
       return b;
     };
-    mk(1080, 'II', () => this.S.speed = this.S.speed === 0 ? 1 : 0);
-    mk(1150, '1×', () => this.S.speed = 1);
-    mk(1220, '2×', () => this.S.speed = 2);
+    // pause button: visual toggles between '▶' (running) and 'II' (paused)
+    this.pauseBtn = mk(1080, '\u25b6', () => { this.S.speed = this.S.speed === 0 ? 1 : 0; this.updatePauseButton(); });
+    mk(1150, '1×', () => { this.S.speed = 1; this.updatePauseButton(); });
+    mk(1220, '2×', () => { this.S.speed = 2; this.updatePauseButton(); });
     this.refreshTop();
+  }
+  // Update pause button label to reflect current speed state
+  updatePauseButton() {
+    if (!this.pauseBtn) return;
+    const label = this.S.speed === 0 ? 'II' : '\u25b6';
+    this.pauseBtn._label.setText(label);
   }
   weeklyBurn() {
     let b = RENT + (this.quarterRentIncrease || 0);
