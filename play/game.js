@@ -514,6 +514,31 @@ class Office extends Phaser.Scene {
     }
   }
 
+  // Set the current department (selected from DEPT tab)
+  setCurrentDept(dept) {
+    this.currentDept = dept;
+    // Re-render sidebar to reflect selection and show current label
+    this.renderSidebar();
+  }
+
+  // Toggle desk i in the currently selected department
+  toggleDeskDept(i) {
+    if (!this.currentDept) {
+      // hint to user: no dept selected
+      this.flashText(this.deskObjs[i].x, this.deskObjs[i].y - 118, 'Select DEPT', '#f5b942');
+      return;
+    }
+    const desks = this.currentDept.desks;
+    const idx = desks.indexOf(i);
+    if (idx === -1) {
+      desks.push(i);
+    } else {
+      desks.splice(idx, 1);
+    }
+    // Update UI: re-render department list to show updated count
+    this.renderSidebar();
+  }
+
   createDepartment() {
     const n = this.S.departments.length + 1;
     let name = `Dept ${n}`;
