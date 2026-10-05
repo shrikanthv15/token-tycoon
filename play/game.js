@@ -143,6 +143,11 @@ class Office extends Phaser.Scene {
       { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942', align: 'center' }).setOrigin(0.5).setDepth(50);
     this.time.delayedCall(12000, () => this.hint && this.hint.destroy(), [], this);
     this.exposeHooks();
+    // Day/night overlay based on clock
+    const { width, height } = this.scale;
+    this.tintOverlay = this.add.rectangle(width/2, height/2, width, height, 0xffe0a0).setAlpha(0.2).setDepth(5);
+    this.prevDay = this.S.day;
+    this.updateTint();
     // Tangent event timer: occasional staff wander off, wasting pool
     this.time.addEvent({ delay: 6000, loop: true, callback: this.maybeTangent, callbackScope: this });
     this.tangentActive = false;
@@ -219,6 +224,19 @@ class Office extends Phaser.Scene {
     this.tangentStaff = null;
     // refresh UI if needed
     this.renderSidebar();
+  }
+
+  // Update tint overlay based on day (daytime vs night)
+  updateTint() {
+    const S = this.S;
+    // Define daytime: days 1-5, night: days 6-7
+    if (S.day <= 5) {
+      // warm daylight tint
+      this.tintOverlay.setFillStyle(0xffe0a0, 0.2);
+    } else {
+      // deep blue/purple night tint
+      this.tintOverlay.setFillStyle(0x001030, 0.2);
+    }
   }
 
   // ----- existing methods continue below -----
@@ -734,6 +752,7 @@ class Office extends Phaser.Scene {
       S.dayT = 0; S.day++;
       if (S.day > DAYS_PER_WEEK) { S.day = 1; S.week++; this.weeklyTick(); }
       this.refreshTop();
+      this.updateTint();
     }
     S.nextJobIn -= dt;
     if (S.nextJobIn <= 0) { this.spawnJob(); S.nextJobIn = 18 + Math.random() * 14; }
