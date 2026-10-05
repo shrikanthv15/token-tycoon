@@ -9,6 +9,7 @@ const { chromium } = require('playwright');
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 
   await page.goto('http://127.0.0.1:8903/index.html', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000); // phaser boot wait
   const booted = await page.evaluate(() => !!window.__tt);
   if (!booted) throw new Error('Game did not boot');
 
