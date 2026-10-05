@@ -319,9 +319,6 @@ class Office extends Phaser.Scene {
       const wkText = this.add.text(0, -134, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
       const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
       const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
-      // DELETED visual divider
-      // DELETED visual divider
-      // DELETED visual divider
       // pool meters (bars)
       const h5BarBg = this.add.graphics();
       h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -112, 56, 8);
