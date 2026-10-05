@@ -37,8 +37,8 @@ const { chromium } = require('playwright');
 
   // After compact, expect contextFill, risk, busy to be zero
   const after = await page.evaluate(() => ({
-    cf: window.__tt.state.contextFill,
-    risk: window.__tt.state.risk,
+    cf: window.__tt.state.staff[0].contextFill,
+    risk: window.__tt.state.staff[0].risk,
     busy: window.__tt.state.staff[0].busy,
   }));
   if (after.cf !== 0 || after.risk !== 0 || after.busy !== false) {

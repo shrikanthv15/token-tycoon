@@ -34,16 +34,13 @@ const { chromium } = require('playwright');
   const staffBusy = await page.evaluate(() => window.__tt.state.staff[0].busy);
   if (!staffBusy) throw new Error('Staff not marked busy after job assignment');
 
-  // Advance time to trigger a tangent event (increase speed for faster cycles)
-  await page.evaluate(() => { window.__tt.state.speed = 4; });
-  const maxWait = 15000; // 15s max
-  const start = Date.now();
-  let tangentSeen = false;
-  await page.evaluate(() => {
-  for (let i = 0; i < 200 && !window.__tt.tangentActive(); i++) window.__tt.scene.maybeTangent();
-});
-if (!await page.evaluate(() => window.__tt.tangentActive())) throw new Error('Tangent not active after deterministic...');
-    if (!window.__tt.tangentActive()) throw new Error('Tangent not active after deterministic drive');
+  await page.evaluate(() => { window.__tt.hire('fable'); });
+  await page.waitForTimeout(2000);
+  const tangentFired = await page.evaluate(() => {
+    for (let i = 0; i < 200 && !window.__tt.tangentActive(); i++) window.__tt.scene.maybeTangent();
+    return window.__tt.tangentActive();
+  });
+  if (!tangentFired) throw new Error('Tangent not active after deterministic drive');
 
   await browser.close();
   if (errors.length) throw new Error('Encountered errors: ' + errors.join(' | '));
