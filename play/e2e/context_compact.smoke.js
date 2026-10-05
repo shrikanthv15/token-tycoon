@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
   if (!await page.evaluate(() => !!window.__tt)) throw new Error('Game did not boot');
 
   // Setup: buy sub and hire two staffers (haiku and assistant)
-  await page.evaluate(() => { window.__tt.buySub('claude'); window.__tt.hire('haiku'); window.__tt.hire('assistant'); });
+  await page.evaluate(() => { window.__tt.buySub('claude'); window.__tt.hire('haiku'); window.__tt.hire('fable'); });
   await page.waitForTimeout(2000);
 
   // Ensure both staff are present

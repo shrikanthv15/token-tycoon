@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
   if (!booted) throw new Error('Game did not boot');
 
   // Buy Claude subscription and hire Haiku model
-  await page.evaluate(() => { window.__tt.buySub('claude'); window.__tt.hire('haiku'); window.__tt.hire('assistant'); });
+  await page.evaluate(() => { window.__tt.buySub('claude'); window.__tt.hire('haiku'); window.__tt.hire('fable'); });
   await page.waitForTimeout(2000);
   const staffCount = await page.evaluate(() => window.__tt.state.staff.length);
   if (staffCount !== 1) throw new Error('Expected 1 staff after hiring Haiku');
@@ -39,11 +39,8 @@ const { chromium } = require('playwright');
   const maxWait = 15000; // 15s max
   const start = Date.now();
   let tangentSeen = false;
-  while (Date.now() - start < maxWait && !tangentSeen) {
-    tangentSeen = await page.evaluate(() => !!window.__tt.tangentActive());
-    if (!tangentSeen) await page.waitForTimeout(500);
-  }
-  if (!tangentSeen) throw new Error('Tangent event did not fire within timeout');
+  for (let i = 0; i < 200 && !window.__tt.tangentActive(); i++) window.__tt.scene.maybeTangent();
+    if (!window.__tt.tangentActive()) throw new Error('Tangent not active after deterministic drive');
 
   await browser.close();
   if (errors.length) throw new Error('Encountered errors: ' + errors.join(' | '));

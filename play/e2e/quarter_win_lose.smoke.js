@@ -18,7 +18,7 @@ const { chromium } = require('playwright');
     S.profitTarget = 0;
     S.cash = 200; // ensure profit positive
     S.quarterStartCash = 100;
-    window.__tt.evaluateQuarter(); // trigger evaluation
+    window.__tt.scene.evaluateQuarter(); // trigger evaluation
   });
   const quarterAfterWin = await page.evaluate(() => window.__tt.state.quarter);
   if (quarterAfterWin !== 2) throw new Error('Quarter win not detected');
@@ -34,7 +34,7 @@ const { chromium } = require('playwright');
     // force profit below target and cash negative to trigger loss
     S.cash = -10;
     // run evaluation (will call gameOver)
-    window.__tt.evaluateQuarter();
+    window.__tt.scene.evaluateQuarter();
   });
   const over = await page.evaluate(() => window.__tt.state.over);
   if (!over) throw new Error('Quarter lose (game over) not detected');

@@ -22,14 +22,14 @@ const { chromium } = require('playwright');
   if (deptIdx < 0) throw new Error('No department created');
 
   // Set as current department
-  await page.evaluate(idx => {
+  await page.evaluate(() => {
     const dept = window.__tt.state.departments[idx];
     window.__tt.scene.currentDept = dept;
   }, deptIdx);
 
   // Toggle desk 0 into department
   await page.evaluate(() => window.__tt.scene.toggleDeskDept(0));
-  const desks = await page.evaluate(() => window.__tt.currentDept?.desks || []);
+  const desks = await page.evaluate(() => window.__tt.scene.currentDept?.desks || []);
   if (!desks.includes(0)) throw new Error('Desk not assigned to department');
 
   await browser.close();
