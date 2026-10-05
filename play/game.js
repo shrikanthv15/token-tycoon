@@ -708,6 +708,9 @@ class Office extends Phaser.Scene {
   }
   completeJob(st, success) {
     const S = this.S, j = st.job;
+    // clean up any prior failure UI
+    if (st.failMarker) { st.failMarker.destroy(); st.failMarker = null; }
+    if (st.debugHandler) { st.spr.off('pointerdown', st.debugHandler); st.debugHandler = null; }
     if (st.bounce) st.bounce.stop();
     st.busy = false; st.job = null;
     if (st.bar) { st.bar.destroy(); st.bar = null; }
@@ -723,7 +726,45 @@ class Office extends Phaser.Scene {
       this.tweens.add({ targets: st.spr, y: '-=10', duration: 160, yoyo: true, repeat: 1 });
     } else {
       S.failed++;
-      this.flashText(st.desk.x, st.desk.y - 118, 'FAILED', '#f87171');
+      // show failing marker
+      const marker = this.add.text(st.spr.x, st.spr.y - 80, '⚠️', { fontSize: '28px' }).setOrigin(0.5).setDepth(70);
+      st.failMarker = marker;
+      // add debug click handler
+      const self = this;
+      const debugHandler = function () {
+        const overlay = self.add.rectangle(640, 360, 1280, 720, 0x000000, 0.4).setDepth(80).setInteractive();
+        const modal = self.add.container(640, 360).setDepth(81);
+        const bg = self.add.graphics();
+        bg.fillStyle(0x2a3852, 0.9).fillRoundedRect(-150, -80, 300, 160, 12);
+        const msg = self.add.text(0, -40, 'Debug job?', { fontFamily: 'Courier New', fontSize: '20px', color: '#f5b942' }).setOrigin(0.5);
+        const btn = self.add.text(0, 30, '[ DEBUG ]', { fontFamily: 'Courier New', fontSize: '18px', color: '#4ade80', fontStyle: 'bold' })
+          .setInteractive({ useHandCursor: true }).setOrigin(0.5);
+        modal.add([bg, msg, btn]);
+        btn.on('pointerdown', () => {
+          const SAVE_CHANCE = 0.2; // small constant chance to save
+          if (Math.random() < SAVE_CHANCE) {
+            S.cash += j.pay; S.revenue += j.pay; S.done++;
+            self.flashText(st.desk.x, st.desk.y - 118, `+$${j.pay}`, '#4ade80');
+          } else {
+            self.flashText(st.desk.x, st.desk.y - 118, 'FAILED', '#f87171');
+          }
+          if (st.failMarker) { st.failMarker.destroy(); st.failMarker = null; }
+          st.spr.off('pointerdown', debugHandler);
+          overlay.destroy();
+          modal.destroy();
+          self.refreshTop();
+        });
+        overlay.on('pointerdown', () => {
+          if (st.failMarker) { st.failMarker.destroy(); st.failMarker = null; }
+          st.spr.off('pointerdown', debugHandler);
+          overlay.destroy();
+          modal.destroy();
+        });
+      };
+      st.debugHandler = debugHandler;
+      st.spr.setInteractive({ useHandCursor: true });
+      st.spr.off('pointerdown');
+      st.spr.on('pointerdown', debugHandler);
     }
     this.refreshTop();
   }
