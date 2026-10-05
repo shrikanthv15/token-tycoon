@@ -750,14 +750,18 @@ class Office extends Phaser.Scene {
             self.flashText(st.desk.x, st.desk.y - 118, 'FAILED', '#f87171');
           }
           if (st.failMarker) { st.failMarker.destroy(); st.failMarker = null; }
+          // detach debug handler and reattach fire handler
           st.spr.off('pointerdown', debugHandler);
+          st.spr.on('pointerdown', () => self.fire(st));
           overlay.destroy();
           modal.destroy();
           self.refreshTop();
         });
         overlay.on('pointerdown', () => {
           if (st.failMarker) { st.failMarker.destroy(); st.failMarker = null; }
+          // detach debug handler and reattach fire handler
           st.spr.off('pointerdown', debugHandler);
+          st.spr.on('pointerdown', () => self.fire(st));
           overlay.destroy();
           modal.destroy();
         });
