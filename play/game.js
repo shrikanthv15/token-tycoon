@@ -798,16 +798,26 @@ class Office extends Phaser.Scene {
         // ignore and fall back to local generation
       }
     }
-    // Local generation fallback
-    const index = Math.floor(Math.random() * JOB_TITLES.length);
-    stars = stars || (1 + Math.floor(Math.random() * 3));
-    pay = pay || (stars === 1 ? 8 + Math.floor(Math.random() * 5) : stars === 2 ? 15 + Math.floor(Math.random() * 11) : 30 + Math.floor(Math.random() * 21));
-    const randomTitle = JOB_TITLES[index];
-    const randomDesc = JOB_DESCRIPTIONS[index] || '';
-    const finalTitle = title || randomTitle;
-    const finalDesc = description || randomDesc;
-    S.jobs.push({ id: S.jobSeq++, title: finalTitle, description: finalDesc, stars, pay });
-    if (this.tab === 'inbox') this.renderSidebar();
+    if (NEMOTRON_ENABLED && typeof window.NemotronBridge !== 'undefined' && window.NemotronBridge.isEnabled()) {
+      try {
+        // Prepare a minimal world snapshot (could be full state or subset)
+        const snapshot = { cash: S.cash, day: S.day, week: S.week, staffCount: S.staff.length };
+        const remoteJobs = window.NemotronBridge.requestJobs(snapshot);
+        // If remoteJobs is a Promise, we cannot await here; assume sync for test.
+        if (Array.isArray(remoteJobs) && remoteJobs.length) {
+          const job = remoteJobs[0];
+          const finalTitle = job.title || title;
+          const finalDesc = job.description || description;
+          const finalStars = job.stars || stars;
+          const finalPay = job.pay || pay;
+          S.jobs.push({ id: S.jobSeq++, title: finalTitle, description: finalDesc, stars: finalStars, pay: finalPay });
+          if (this.tab === 'inbox') this.renderSidebar();
+          return;
+        }
+      } catch(e) {
+        // ignore and fall back to local generation
+      }
+    }
   }
   // ----- main loop -----
   update(time, delta) {
