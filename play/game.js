@@ -315,10 +315,13 @@ class Office extends Phaser.Scene {
       for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
       const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
       // pool meters (text)
-      const h5Text = this.add.text(0, -80, '', { fontFamily: 'Courier New', fontSize: '10px', color: '#f5b942' }).setOrigin(0.5);
-      const wkText = this.add.text(0, -68, '', { fontFamily: 'Courier New', fontSize: '10px', color: '#f5b942' }).setOrigin(0.5);
-      const h5Timer = this.add.text(0, -56, '', { fontFamily: 'Courier New', fontSize: '9px', color: '#8b98ad' }).setOrigin(0.5);
-      const wkTimer = this.add.text(0, -44, '', { fontFamily: 'Courier New', fontSize: '9px', color: '#8b98ad' }).setOrigin(0.5);
+      const h5Text = this.add.text(0, -78, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const wkText = this.add.text(0, -62, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const h5Timer = this.add.text(0, -48, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
+      const wkTimer = this.add.text(0, -34, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
+      // visual divider linking meters to desk
+      const divider = this.add.graphics();
+      divider.lineStyle(1, 0x8b98ad, 0.5).strokeLineShape(new Phaser.Geom.Line(-30, -10, 30, -10));
       // pool meters (bars)
       const h5BarBg = this.add.graphics();
       h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -40, 56, 8);
