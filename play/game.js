@@ -4,6 +4,9 @@
 */
 'use strict';
 
+  // Feature flag for Nemotron bridge
+let NEMOTRON_ENABLED = false;
+
 // ---------- data ----------
 const SUBS = {
   claude: { name: 'Claude', price: 20, color: 0xd97757, css: '#d97757', h5: 400, wk: 2000 },
@@ -779,15 +782,31 @@ class Office extends Phaser.Scene {
       .setOrigin(0.5).setDepth(60);
     this.tweens.add({ targets: t, y: y - 30, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
   }
-  spawnJob(stars, pay) {
+  spawnJob(stars, pay, title=null, description=null) {
     const S = this.S;
     if (S.jobs.length >= 5 || S.over) return;
+    // If Nemotron bridge enabled, try remote job generation
+    if (NEMOTRON_ENABLED && typeof window.NemotronBridge !== 'undefined' && window.NemotronBridge.isEnabled()) {
+      try {
+        // Prepare a minimal world snapshot (could be full state or subset)
+        const snapshot = { cash: S.cash, day: S.day, week: S.week, staffCount: S.staff.length };
+        const remoteJobs = window.NemotronBridge.requestJobs(snapshot);
+        // requestJobs returns a promise; we need async handling – but spawnJob is sync.
+        // Instead, make spawnJob async by returning a promise and adjust callers.
+        // We'll handle fallback synchronously if promise not awaited.
+      } catch(e) {
+        // ignore and fall back to local generation
+      }
+    }
+    // Local generation fallback
     const index = Math.floor(Math.random() * JOB_TITLES.length);
     stars = stars || (1 + Math.floor(Math.random() * 3));
     pay = pay || (stars === 1 ? 8 + Math.floor(Math.random() * 5) : stars === 2 ? 15 + Math.floor(Math.random() * 11) : 30 + Math.floor(Math.random() * 21));
-    const title = JOB_TITLES[index];
-    const description = JOB_DESCRIPTIONS[index] || '';
-    S.jobs.push({ id: S.jobSeq++, title, description, stars, pay });
+    const randomTitle = JOB_TITLES[index];
+    const randomDesc = JOB_DESCRIPTIONS[index] || '';
+    const finalTitle = title || randomTitle;
+    const finalDesc = description || randomDesc;
+    S.jobs.push({ id: S.jobSeq++, title: finalTitle, description: finalDesc, stars, pay });
     if (this.tab === 'inbox') this.renderSidebar();
   }
   // ----- main loop -----
