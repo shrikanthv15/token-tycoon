@@ -568,34 +568,36 @@ class Office extends Phaser.Scene {
   // ----- department UI -----
   renderDept(SX) {
     const S = this.S;
-    let y = 155;
+    // Start a bit lower to avoid overlap with top UI
+    let y = 140;
     S.departments.forEach((dept, idx) => {
       const row = this.add.container(SX + 165, y);
       const bg = this.add.graphics();
-      bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -26, 290, 52, 8);
-      bg.lineStyle(2, 0x4ade80, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
-      row.add([bg,
-        this.add.text(-130, -18, dept.name, { fontFamily: 'Courier New', fontSize: '15px', color: '#eceff4', fontStyle: 'bold' }),
-        this.add.text(-130, 4, `Desks: ${dept.desks.length}`, { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
+      // Softer dark background with subtle border
+      bg.fillStyle(0x0a0d13, 1).fillRoundedRect(-150, -30, 300, 60, 10);
+      bg.lineStyle(2, 0x5a6578, 1).strokeRoundedRect(-150, -30, 300, 60, 10);
+      row.add([
+        this.add.text(-135, -20, dept.name, { fontFamily: 'Courier New', fontSize: '16px', color: '#e0e0e0', fontStyle: 'bold' }),
+        this.add.text(-135, 6, `Desks: ${dept.desks.length}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#b0b8c0' })
       ]);
-      row.setSize(290, 52).setInteractive({ useHandCursor: true });
+      row.setSize(300, 60).setInteractive({ useHandCursor: true });
       row.on('pointerdown', () => this.setCurrentDept(dept));
       if (dept.unlocks && dept.unlocks.length) {
-        const u = this.add.text(-130, 20, 'Unlocks: ' + dept.unlocks.join(', '), { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
+        const u = this.add.text(-135, 28, 'Unlocks: ' + dept.unlocks.join(', '), { fontFamily: 'Courier New', fontSize: '12px', color: '#7a828d' });
         row.add(u);
-        y += 8;
+        y += 10; // extra space for unlock line
       }
       this.sideC.add(row);
-      y += 62;
+      y += 70; // increased row height for readability
     });
-    const newBtn = this.add.text(SX + 165, y, '[ CREATE DEPT ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942', fontStyle: 'bold' })
+    const newBtn = this.add.text(SX + 165, y, '[ CREATE DEPT ]', { fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942', fontStyle: 'bold' })
       .setInteractive({ useHandCursor: true });
     newBtn.on('pointerdown', () => this.createDepartment());
     this.sideC.add(newBtn);
     if (this.currentDept) {
       // Render "Current:" label below department list and create button, never above y=130
       const labelY = Math.max(y + 20, 130);
-      this.sideC.add(this.add.text(SX + 10, labelY, 'Current: ' + this.currentDept.name, { fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942' }));
+      this.sideC.add(this.add.text(SX + 10, labelY, 'Current: ' + this.currentDept.name, { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942' }));
     }
   }
 
