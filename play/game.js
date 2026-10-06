@@ -438,6 +438,7 @@ class Office extends Phaser.Scene {
     g.fillStyle(0x0e131c, 1).fillRect(SX, 64, 330, 736);
     g.lineStyle(1, 0x1f2a3f, 1).lineBetween(SX, 64, SX, 800);
     this.tab = 'inbox';
+    this.jobTier = 'ALL'; // filter for job tiers
     const mkTab = (x, label, id) => {
       const t = this.add.text(x, 84, label, { fontFamily: 'Courier New', fontSize: '16px', color: '#8b98ad', fontStyle: 'bold' })
         .setInteractive({ useHandCursor: true })
@@ -449,7 +450,18 @@ class Office extends Phaser.Scene {
     this.tabInbox = mkTab(SX + 24, 'INBOX', 'inbox');
     this.tabHire = mkTab(SX + 130, 'HIRE', 'hire');
     this.tabDept = mkTab(SX + 236, 'DEPT', 'dept');
-    this.jobSourceText = this.add.text(SX + 20, 120, 'jobs: LOCAL', {fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942'}).setDepth(30);
+    // Tier filter tabs (only visible in INBOX)
+    const tierLabels = ['ALL','LOCAL','PRO','ELITE'];
+    this.tierTabs = {};
+    tierLabels.forEach((lbl, idx) => {
+      const x = SX + 24 + idx * 70; // spaced horizontally
+      const t = this.add.text(x, 110, lbl, { fontFamily: 'Courier New', fontSize: '14px', color: '#8b98ad' })
+        .setInteractive({ useHandCursor: true })
+        .setDepth(30);
+      t.on('pointerdown', () => { this.jobTier = lbl; this.renderSidebar(); });
+      this.tierTabs[lbl] = t;
+    });
+    this.jobSourceText = this.add.text(SX + 20, 140, 'jobs: LOCAL', {fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942'}).setDepth(30);
     this.sideC = this.add.container(0, 0).setDepth(20);
     this.renderSidebar();
   }
@@ -483,16 +495,30 @@ class Office extends Phaser.Scene {
 
   // ----- job UI -----
   renderInbox(SX) {
+    // Filter jobs based on selected tier
+    const tierMap = {
+      'LOCAL': 1,
+      'PRO': 2,
+      'ELITE': 3,
+    };
+    let jobsToShow = this.S.jobs;
+    if (this.jobTier && this.jobTier !== 'ALL') {
+      const star = tierMap[this.jobTier];
+      if (star !== undefined) {
+        jobsToShow = jobsToShow.filter(j => j.stars === star);
+      }
+    }
     // update job source indicator
     if (this.jobSourceText) this.jobSourceText.setText('jobs: ' + (this.lastJobSource || 'local').toUpperCase());
 
     const S = this.S;
-    if (!S.jobs.length) {
+    const jobs = jobsToShow;
+    if (!jobs.length) {
       this.sideC.add(this.add.text(SX + 165, 300, 'No jobs yet.\nClients will ping you soon.',
         { fontFamily: 'Courier New', fontSize: '14px', color: '#5a6578', align: 'center' }).setOrigin(0.5));
       return;
     }
-    S.jobs.forEach((j, i) => {
+    jobs.forEach((j, i) => {
       const y = 130 + i * 140; // increased spacing for description
       const card = this.add.container(SX + 165, y);
       const bg = this.add.graphics();
