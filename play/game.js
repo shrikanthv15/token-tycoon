@@ -325,7 +325,7 @@ class Office extends Phaser.Scene {
     dw.fillStyle(0x232936, 1).fillRect(OX, OY + OH, DOOR.x - OX - 60, 26);
     dw.fillStyle(0x232936, 1).fillRect(DOOR.x + 60, OY + OH, OW - (DOOR.x + 60 - OX), 26);
     dw.fillStyle(0x4a3220, 1).fillRect(DOOR.x - 46, OY + OH - 4, 92, 30);
-    this.add.text(DOOR.x, OY + OH + 13, 'DOOR', { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' }).setOrigin(0.5);
+    this.add.text(DOOR.x, OY + OH + 13, 'DOOR', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
     // desks
     this.deskObjs = DESKS.map((d, i) => {
       const c = this.add.container(d.x, d.y).setDepth(10);
@@ -338,12 +338,12 @@ class Office extends Phaser.Scene {
       kb.fillStyle(0xdfe6ee, 1).fillRect(-14, 22, 48, 12);
       kb.fillStyle(0x8b98ad, 1);
       for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
-      const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
+      const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' }).setOrigin(0.5);
       // pool meters (text)
       const h5Text = this.add.text(0, -150, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
       const wkText = this.add.text(0, -134, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
-      const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
-      const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
+      const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
+      const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
       // pool meters (bars)
       const h5BarBg = this.add.graphics();
       h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -112, 56, 8);
@@ -499,13 +499,13 @@ class Office extends Phaser.Scene {
       bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -60, 290, 120, 8);
       bg.lineStyle(2, 0xf5b942, 1).strokeRoundedRect(-145, -60, 290, 120, 8);
       const title = this.add.text(-130, -48, j.title, { fontFamily: 'Courier New', fontSize: '14px', color: '#eceff4', fontStyle: 'bold' });
-      const desc = this.add.text(-130, -30, j.description || '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad', wordWrap: { width: 260 } });
+      const desc = this.add.text(-130, -30, j.description || '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad', wordWrap: { width: 260 } });
       const meta = this.add.text(-130, 4, '★'.repeat(j.stars) + `  $${j.pay}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' });
       const hint = this.add.text(-130, 28, 'drag onto a person', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' });
       // badge for AI jobs
       let badge = null;
       if (j.ai) {
-        badge = this.add.text(120, -48, 'AI', { fontFamily: 'Courier New', fontSize: '12px', color: '#ffbf00', fontStyle: 'bold' })
+        badge = this.add.text(120, -48, 'AI', { fontFamily: 'Courier New', fontSize: '13px', color: '#ffbf00', fontStyle: 'bold' })
           .setOrigin(0.5);
       }
       card.add([bg, title, desc, meta, hint]);
@@ -540,7 +540,7 @@ class Office extends Phaser.Scene {
       bg.lineStyle(2, owned ? 0x4ade80 : 0x1f2a3f, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
       row.add([bg,
         this.add.text(-130, -18, sub.name, { fontFamily: 'Courier New', fontSize: '15px', color: sub.css, fontStyle: 'bold' }),
-        this.add.text(-130, 4, owned ? 'active' : (unlocked ? `$${sub.price}/wk` : `[ LOCKED: week ${UNLOCK_WEEKS[sid]} ]`), { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
+        this.add.text(-130, 4, owned ? 'active' : (unlocked ? `$${sub.price}/wk` : `[ LOCKED: week ${UNLOCK_WEEKS[sid]} ]`), { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' })
       ]);
       if (!owned && unlocked) {
         const b = this.add.text(110, -8, '[ BUY ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942', fontStyle: 'bold' })
@@ -579,7 +579,7 @@ class Office extends Phaser.Scene {
     }
     // staff list with fire buttons and context meters
     if (S.staff.length) {
-      this.sideC.add(this.add.text(SX + 20, y, 'STAFF (click to fire):', { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' }));
+      this.sideC.add(this.add.text(SX + 20, y, 'STAFF (click to fire):', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }));
       y += 24;
       S.staff.forEach(s => {
         const meter = Math.round(s.contextFill || 0);
@@ -592,7 +592,7 @@ class Office extends Phaser.Scene {
         t.on('pointerdown', () => this.fire(s));
         this.sideC.add([t, bar]);
         if (meter > 0) {
-          const btn = this.add.text(SX + 300, y-2, '[COMPACT]', { fontFamily: 'Courier New', fontSize: '11px', color: '#f5b942' }).setInteractive({ useHandCursor: true });
+          const btn = this.add.text(SX + 300, y-2, '[COMPACT]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setInteractive({ useHandCursor: true });
           btn.on('pointerdown', () => this.compact(s));
           this.sideC.add(btn);
         }
@@ -612,7 +612,7 @@ class Office extends Phaser.Scene {
       bg.lineStyle(2, 0x4ade80, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
       row.add([bg,
         this.add.text(-130, -18, dept.name, { fontFamily: 'Courier New', fontSize: '15px', color: '#eceff4', fontStyle: 'bold' }),
-        this.add.text(-130, 4, `Desks: ${dept.desks.length}`, { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
+        this.add.text(-130, 4, `Desks: ${dept.desks.length}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' })
       ]);
       row.setSize(290, 52).setInteractive({ useHandCursor: true });
       row.on('pointerdown', () => this.setCurrentDept(dept));
