@@ -146,6 +146,7 @@ function freshState() {
     quarterWeeks: 0,
     profitTarget: 20,
     quarterStartCash: 100,
+    speed: 1, // 1 = running, 0 = paused
   };
 }
 
@@ -156,18 +157,17 @@ class Office extends Phaser.Scene {
     // load persisted state if available
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem('tt_state')); } catch(e) {}
+    // Initialize fresh state
     this.S = freshState();
     this.currentDept = null;
     this.buildTextures();
     this.buildOffice();
-    // State must exist before the HUD builds (buildTopbar calls refreshTop).
-    // Restore then runs over it. Fix by Kratos Muse 2026-10-04: restore used
-    // to run before buildTopbar, throwing on undefined text objects and
-    // killing boot after reload.
-    this.S = freshState();
+    // If we have a saved snapshot, restore it now (before UI that depends on state)
+    if (saved) {
+      this._restoreFromSnapshot(saved);
+    }
     this.buildTopbar();
     this.buildSidebar();
-    if (saved) this._restoreFromSnapshot(saved);
     this.hint = this.add.text(475, 100, 'Buy a subscription (HIRE tab) → hire a model → drag jobs onto them',
       { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942', align: 'center' }).setOrigin(0.5).setDepth(50);
     this.time.delayedCall(12000, () => this.hint && this.hint.destroy(), [], this);
@@ -177,6 +177,8 @@ class Office extends Phaser.Scene {
     this.tintOverlay = this.add.rectangle(width/2, height/2, width, height, 0xffe0a0).setDepth(5);
     this.prevDay = this.S.day;
     this.updateTint();
+    // Ensure pause overlay reflects restored speed state
+    this.updatePauseButton();
     // Tangent event timer: occasional staff wander off, wasting pool
     this.time.addEvent({ delay: 6000, loop: true, callback: this.maybeTangent, callbackScope: this });
     this.tangentActive = false;
