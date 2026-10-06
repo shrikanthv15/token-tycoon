@@ -632,6 +632,11 @@ class Office extends Phaser.Scene {
       while (this.S.departments.some(d => d.name === `Dept ${i}`)) i++;
       name = `Dept ${i}`;
     }
+    // Apply organization cash bonus on department creation
+    const bonus = 10; // cash bonus amount
+    this.S.cash = Math.round((this.S.cash || 0) + bonus);
+    // Show HUD text for the bonus
+    this.flashText(640, 100, `+${bonus} cash (Dept Bonus)`, '#4ade80');
     this.S.departments.push({ name, desks: [], unlocks: ['batch', 'pool'] });
     this.renderSidebar();
   }
