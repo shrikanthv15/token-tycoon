@@ -12,6 +12,35 @@ function isNemotronEnabled(){
 
 
 // ---------- data ----------
+// Shop definitions
+const SHOP_ITEMS = [
+  {
+    key: 'extra_chair',
+    name: 'Extra Chair',
+    price: 20,
+    description: 'Adds an extra chair (increases desk count).',
+    apply: (scene) => {
+      const idx = scene.deskObjs.length;
+      scene.deskObjs.push({
+        x: 0,
+        y: 0,
+        c: null,
+        plate: { setText: () => {} },
+        taken: false,
+        idx,
+        h5Text: { setText: () => {} },
+        wkText: { setText: () => {} },
+        h5Timer: { setText: () => {} },
+        wkTimer: { setText: () => {} },
+        h5Bar: { clear: () => {} },
+        wkBar: { clear: () => {} },
+        h5BarBg: { clear: () => {} },
+        wkBarBg: { clear: () => {} },
+      });
+      scene.flashText(640, 100, '+1 chair', '#4ade80');
+    },
+  },
+];
 const SUBS = {
   claude: { name: 'Claude', price: 20, color: 0xd97757, css: '#d97757', h5: 400, wk: 2000 },
   codex:  { name: 'Codex',  price: 20, color: 0x10a37f, css: '#10a37f', h5: 300, wk: 1500 },
@@ -21,6 +50,7 @@ const SUBS = {
   openclaw: { name: 'OpenClaw', price: 28, color: 0x27ae60, css: '#27ae60', h5: 340, wk: 1700 },
   hyperbrain: { name: 'HyperBrain', price: 40, color: 0xe74c3c, css: '#e74c3c', h5: 420, wk: 2100 },
 };
+
 const MODELS = {
   haiku: { name: 'Haiku',        sub: 'claude', cap: 1, cost: 40  },
   fable: { name: 'Fable 5.1',    sub: 'claude', cap: 2, cost: 70  },
@@ -449,6 +479,7 @@ class Office extends Phaser.Scene {
     this.tabInbox = mkTab(SX + 24, 'INBOX', 'inbox');
     this.tabHire = mkTab(SX + 130, 'HIRE', 'hire');
     this.tabDept = mkTab(SX + 236, 'DEPT', 'dept');
+    this.tabShop = mkTab(SX + 342, 'SHOP', 'shop');
     this.jobSourceText = this.add.text(SX + 20, 120, 'jobs: LOCAL', {fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942'}).setDepth(30);
     this.sideC = this.add.container(0, 0).setDepth(20);
     this.renderSidebar();
@@ -459,11 +490,42 @@ class Office extends Phaser.Scene {
     this.tabInbox.setColor(this.tab === 'inbox' ? '#f5b942' : '#8b98ad');
     this.tabHire.setColor(this.tab === 'hire' ? '#f5b942' : '#8b98ad');
     this.tabDept.setColor(this.tab === 'dept' ? '#f5b942' : '#8b98ad');
+    this.tabShop.setColor(this.tab === 'shop' ? '#f5b942' : '#8b98ad');
     const SX = 950;
     if (this.tab === 'inbox') this.renderInbox(SX);
     else if (this.tab === 'hire') this.renderHire(SX);
     else if (this.tab === 'dept') this.renderDept(SX);
+    else if (this.tab === 'shop') this.renderShop(SX);
   }
+
+  renderShop(SX) {
+    const S = this.S;
+    let y = 155;
+    SHOP_ITEMS.forEach((item, i) => {
+      const row = this.add.container(SX + 165, y);
+      const bg = this.add.graphics();
+      bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -26, 290, 52, 8);
+      bg.lineStyle(2, 0xf5b942, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
+      const nameTxt = this.add.text(-130, -12, `${item.name} ($${item.price})`, {fontFamily: 'Courier New', fontSize: '15px', color: '#eceff4'});
+      row.add([bg, nameTxt]);
+      if (S.cash >= item.price) {
+        const btn = this.add.text(100, -8, '[ BUY ]', {fontFamily: 'Courier New', fontSize: '13px', color: '#4ade80', fontStyle: 'bold'}).setInteractive({useHandCursor:true});
+        btn.on('pointerdown', () => {
+          this.S.cash -= item.price;
+          item.apply(this);
+          this.refreshTop();
+          this.renderSidebar();
+        });
+        row.add(btn);
+      } else {
+        const locked = this.add.text(100, -8, 'INSUFFICIENT FUNDS', {fontFamily: 'Courier New', fontSize: '13px', color: '#f87171'});
+        row.add(locked);
+      }
+      this.sideC.add(row);
+      y += 60;
+    });
+  }
+
 
   // Compact action resets context and risk
   compact(st) {
