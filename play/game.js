@@ -58,7 +58,14 @@ const DESKS = [
   { x: 220, y: 330 }, { x: 560, y: 330 },
   { x: 220, y: 600 }, { x: 560, y: 600 },
 ];
-const DOOR = { x: 790, y: 800 };
+const SECOND_ROOM_COST = 50;
+const SECOND_DESKS = [
+  { x: 220 + 400, y: 330 },
+  { x: 560 + 400, y: 330 },
+  { x: 220 + 400, y: 600 },
+  { x: 560 + 400, y: 600 },
+];
+
 
 // ---------- pixel sprites ----------
 function personFrame(shirt, frame) {
@@ -120,17 +127,20 @@ function hexRgb(h) { return [(h >> 16) & 255, (h >> 8) & 255, h & 255]; }
 function freshState() {
   return {
     cash: 100, day: 1, week: 1, dayT: 0, speed: 1, over: false,
-    subs: {},          // id -> {h5, wk}
-    staff: [],         // {model, desk, sprite, busy, job, contextFill}
-    jobs: [],          // inbox job cards {id,title,stars,pay,card}
+    subs: {},
+    staff: [],
+    jobs: [],
     revenue: 0, spent: 0, nextJobIn: 8,
     jobSeq: 1, done: 0, failed: 0,
-    departments: [],   // {name:string, desks:[deskIdx]}
-    roster: [],        // unassigned models {model, id}
+    departments: [],
+    roster: [],
     quarter: 1,
     quarterWeeks: 0,
     profitTarget: 20,
     quarterStartCash: 100,
+    rent: RENT,
+    extraRent: 0,
+    rooms: { second: false },
   };
 }
 
@@ -332,8 +342,9 @@ class Office extends Phaser.Scene {
     dw.fillStyle(0x232936, 1).fillRect(DOOR.x + 60, OY + OH, OW - (DOOR.x + 60 - OX), 26);
     dw.fillStyle(0x4a3220, 1).fillRect(DOOR.x - 46, OY + OH - 4, 92, 30);
     this.add.text(DOOR.x, OY + OH + 13, 'DOOR', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
-    // desks
-    this.deskObjs = DESKS.map((d, i) => {
+
+
+      this.deskObjs = DESKS.map((d, i) => {
       const c = this.add.container(d.x, d.y).setDepth(10);
       const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
       const mon = this.add.graphics();
@@ -363,7 +374,11 @@ class Office extends Phaser.Scene {
       c.on('pointerdown', () => this.toggleDeskDept(i));
       return deskObj;
     });
-    // office chairs at each desk (depth 8: behind seated staff at 9, in front of floor)
+    // after creating main desks, add second room if purchased
+    if (this.S.rooms.second) {
+      this.addSecondRoom();
+    }
+
     DESKS.forEach(d => {
       const ch = this.add.graphics().setDepth(8);
       const x = d.x, b = d.y - 28;
@@ -399,7 +414,10 @@ class Office extends Phaser.Scene {
       b._label = t; // store reference for dynamic updates
       return b;
     };
-    // pause button: visual toggles between '▶' (running) and 'II' (paused)
+    // Purchase Second Room button
+    this.roomBtn = mk(700, '[ BUY ROOM ]', () => this.buySecondRoom());
+    // existing pause button code remains unchanged
+
     this.pauseBtn = mk(1080, '\u25b6', () => { this.S.speed = this.S.speed === 0 ? 1 : 0; this.updatePauseButton(); });
     // PAUSED indicator text, shown when speed == 0
     this.pausedLabel = this.add.text(1080, 10, 'PAUSED', { fontFamily: 'Courier New', fontSize: '16px', color: '#f5b942' })
@@ -408,7 +426,43 @@ class Office extends Phaser.Scene {
     mk(1220, '2×', () => { this.S.speed = 2; this.updatePauseButton(); });
     this.refreshTop();
   }
-  // Update pause button label to reflect current speed state and paused indicator
+  // Purchase Second Room
+  buySecondRoom() {
+    if (this.S.cash < SECOND_ROOM_COST || this.S.rooms.second) return;
+    this.S.cash -= SECOND_ROOM_COST;
+    this.S.rooms.second = true;
+    this.S.extraRent = SECOND_ROOM_COST;
+    this.addSecondRoom();
+    this.refreshTop();
+  }
+
+  // Render second room visuals and desks
+  addSecondRoom() {
+    const OX2 = 400, OY = 64, OW = 950, OH = 736;
+    // floor tiles for second room
+    for (let x = 0; x < OW; x += 32) {
+      for (let y = 0; y < OH; y += 32) {
+        this.add.image(OX2 + x + 16, OY + y + 16, 'tile').setDisplaySize(32, 32);
+      }
+    }
+
+    // walls for second room
+    const wall2 = this.add.graphics();
+    wall2.fillStyle(0x232936, 1).fillRect(OX2, OY - 26, OW, 26);
+    wall2.fillStyle(0x1b2130, 1).fillRect(OX2, OY - 26, 26, OH + 26);
+    // desks for second room
+    SECOND_DESKS.forEach(d => {
+      const c = this.add.container(d.x + OX2, d.y).setDepth(10);
+      const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
+      const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' }).setOrigin(0.5);
+      const deskObj = { x: d.x + OX2, y: d.y, c, plate, taken: false, idx: this.deskObjs.length };
+      c.setSize(168, 84).setInteractive({ useHandCursor: true });
+      c.on('pointerdown', () => this.toggleDeskDept(this.deskObjs.length));
+      this.deskObjs.push(deskObj);
+    });
+  }
+
+
   updatePauseButton() {
     if (!this.pauseBtn) return;
     const label = this.S.speed === 0 ? 'II' : '\u25b6';
@@ -419,10 +473,11 @@ class Office extends Phaser.Scene {
     }
   }
   weeklyBurn() {
-    let b = RENT + (this.quarterRentIncrease || 0);
+    let b = RENT + (this.quarterRentIncrease || 0) + (this.S.extraRent || 0);
     for (const id of Object.keys(this.S.subs)) b += SUBS[id].price;
     return b;
   }
+
   refreshTop() {
     const S = this.S;
     this.cashT.setText('$' + Math.round(S.cash));
