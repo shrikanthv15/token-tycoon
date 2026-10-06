@@ -131,6 +131,8 @@ function freshState() {
     quarterWeeks: 0,
     profitTarget: 20,
     quarterStartCash: 100,
+    rooms: { second: false },
+    extraRent: 0,
   };
 }
 
@@ -157,6 +159,17 @@ class Office extends Phaser.Scene {
       { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942', align: 'center' }).setOrigin(0.5).setDepth(50);
     this.time.delayedCall(12000, () => this.hint && this.hint.destroy(), [], this);
     this.exposeHooks();
+    // Purchase second room with key R (cost 200)
+    this.input.keyboard.on('keydown-R', () => {
+      if (!this.S.rooms.second && this.S.cash >= 200) {
+        this.S.rooms.second = true;
+        this.S.extraRent = 50;
+        this.S.cash -= 200;
+        this.flashText(DOOR.x, DOOR.y - 20, 'SECOND ROOM BOUGHT', '#4ade80');
+        this.refreshTop();
++        this._persist();
+      }
+    });
     // Day/night overlay based on clock
     const { width, height } = this.scale;
     this.tintOverlay = this.add.rectangle(width/2, height/2, width, height, 0xffe0a0).setDepth(5);
@@ -419,8 +432,9 @@ class Office extends Phaser.Scene {
     }
   }
   weeklyBurn() {
-    let b = RENT + (this.quarterRentIncrease || 0);
-    for (const id of Object.keys(this.S.subs)) b += SUBS[id].price;
+    const S = this.S;
+    let b = RENT + (this.quarterRentIncrease || 0) + (S.extraRent || 0);
+    for (const id of Object.keys(S.subs)) b += SUBS[id].price;
     return b;
   }
   refreshTop() {
@@ -1098,13 +1112,13 @@ class Office extends Phaser.Scene {
       subs: S.subs,
       departments: S.departments || [],
       staff: S.staff.map(st => ({ model: st.model, deskIndex: this.deskObjs.indexOf(st.desk) })),
-      // jobs carry j.card (Phaser container) once rendered — strip to plain fields
-      // or JSON.stringify throws on circular refs and _persist silently dies (D-001)
       jobs: S.jobs.map(j => ({ id: j.id, title: j.title, stars: j.stars, pay: j.pay })),
       nextJobIn: S.nextJobIn,
       jobSeq: S.jobSeq,
       done: S.done,
       failed: S.failed,
+      rooms: S.rooms,
+      extraRent: S.extraRent,
     };
   }
 
@@ -1129,6 +1143,8 @@ class Office extends Phaser.Scene {
     this.S.jobSeq = saved.jobSeq;
     this.S.done = saved.done;
     this.S.failed = saved.failed;
+    this.S.rooms = saved.rooms || { second: false };
+    this.S.extraRent = saved.extraRent || 0;
     if (Array.isArray(saved.staff)) {
       saved.staff.forEach(stSnap => {
         const desk = this.deskObjs[stSnap.deskIndex];
