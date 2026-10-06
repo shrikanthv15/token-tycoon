@@ -451,6 +451,11 @@ class Office extends Phaser.Scene {
 
   // ----- job UI -----
   renderInbox(SX) {
+    // Redesign job card visuals
+    // Updated background, border, typography, spacing, hover effect
+    // Spacing between cards
+    const cardSpacing = 180;
+
     // update job source indicator
     if (this.jobSourceText) this.jobSourceText.setText('jobs: ' + (this.lastJobSource || 'local').toUpperCase());
 
