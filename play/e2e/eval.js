@@ -70,13 +70,13 @@ const OX = (1500 - 1280) / 2, OY = (950 - 800) / 2; // canvas offset in viewport
   check('pool_drains', pools && pools.h5 < 400, `h5=${pools && pools.h5}`);
   await page.screenshot({ path: path.join(shotDir, 'shot_done.png') });
 
-  // pause state (PAN-40/54 regression): speed 0 -> button reads 'II'
+  // pause state (PAN-40/54 regression): speed 0 -> button reads '▶'
   const pauseLabel = await ev(() => {
     window.__tt.state.speed = 0;
     window.__tt.scene.updatePauseButton();
     return window.__tt.scene.pauseBtn._label.text;
   });
-  check('pause_state', pauseLabel === 'II', `label=${JSON.stringify(pauseLabel)}`);
+  check('pause_state', pauseLabel === '\u25b6', `label=${JSON.stringify(pauseLabel)}`);
   await ev(() => { window.__tt.state.speed = 1; window.__tt.scene.updatePauseButton(); });
 
   // departments structure present

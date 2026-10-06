@@ -11,6 +11,9 @@ const { chromium } = require('playwright');
   await page.goto('http://127.0.0.1:8903/index.html', { waitUntil: 'networkidle' });
   if (!await page.evaluate(() => !!window.__tt)) throw new Error('Game not booted');
 
+  // Capture cash before
+  const cashBefore = await page.evaluate(() => window.__tt.state.cash);
+
   // Create a new department via exported hook (using internal method)
   await page.evaluate(() => {
     if (typeof window.__tt.scene?.createDepartment === 'function') {
@@ -31,6 +34,10 @@ const { chromium } = require('playwright');
   await page.evaluate(() => window.__tt.scene.toggleDeskDept(0));
   const desks = await page.evaluate(() => window.__tt.scene.currentDept?.desks || []);
   if (!desks.includes(0)) throw new Error('Desk not assigned to department');
+
+  // Verify cash bonus applied (+10)
+  const cashAfter = await page.evaluate(() => window.__tt.state.cash);
+  if (cashAfter !== cashBefore + 10) throw new Error(`Cash bonus not applied, expected ${cashBefore + 10} got ${cashAfter}`);
 
   await browser.close();
   if (errors.length) throw new Error('Errors: ' + errors.join(' | '));
