@@ -4,33 +4,30 @@
 */
 'use strict';
 
-// Feature flag for Nemotron bridge
+  // Feature flag for Nemotron bridge
+// Remove local NEMOTRON_ENABLED flag and add helper
 function isNemotronEnabled(){
   return typeof window !== 'undefined' && window.NemotronBridge && window.NemotronBridge.isEnabled();
 }
 
+
 // ---------- data ----------
 const SUBS = {
-  openrouter: { name: 'OpenRouter', price: 30, color: 0x8a2be2, css: '#8a2be2', h5: 500, wk: 2500 },
   claude: { name: 'Claude', price: 20, color: 0xd97757, css: '#d97757', h5: 400, wk: 2000 },
   codex:  { name: 'Codex',  price: 20, color: 0x10a37f, css: '#10a37f', h5: 300, wk: 1500 },
-  anthropic: { name: 'Anthropic', price: 25, color: 0x5a9bd4, css: '#5a9bd4', h5: 350, wk: 1800 },
-  gemini: { name: 'Gemini', price: 35, color: 0xf0c020, css: '#f0c020', h5: 450, wk: 2200 },
-  openclaw: { name: 'OpenClaw', price: 40, color: 0x2b8a2b, css: '#2b8a2b', h5: 600, wk: 3000 },
-  hyperbrain: { name: 'HyperBrain', price: 45, color: 0x8a2b8a, css: '#8a2b8a', h5: 700, wk: 3500 },
 };
-
 const MODELS = {
-  haiku: { name: 'Haiku',        sub: 'claude', cap: 1, cost: 40 },
-  fable: { name: 'Fable 5.1',    sub: 'claude', cap: 2, cost: 70 },
+  haiku: { name: 'Haiku',        sub: 'claude', cap: 1, cost: 40  },
+  fable: { name: 'Fable 5.1',    sub: 'claude', cap: 2, cost: 70  },
   opus:  { name: 'Opus 5.5',     sub: 'claude', cap: 3, cost: 120 },
-  codex: { name: 'Codex',        sub: 'codex',  cap: 2, cost: 60 },
+  codex: { name: 'Codex',        sub: 'codex',  cap: 2, cost: 60  },
   astra: { name: 'GPT-6 Astra',  sub: 'codex',  cap: 3, cost: 110 },
-  sol:   { name: 'Sol',          sub: 'codex',  cap: 2, cost: 55 },
-  luna:  { name: 'Luna',         sub: 'codex',  cap: 1, cost: 35 },
+  sol:   { name: 'Sol',          sub: 'codex',  cap: 2, cost: 55  },
+  luna:  { name: 'Luna',         sub: 'codex',  cap: 1, cost: 35  },
 };
-
-const JOB_TITLES = ['Fix login bug','Write API docs','Refactor auth module','Build landing page','Triage 50 tickets','Migrate database','Add dark mode','Optimize slow queries','Write test suite','Set up CI pipeline','Debug memory leak','Localize onboarding','Audit permissions','Speed up search'];
+const JOB_TITLES = ['Fix login bug','Write API docs','Refactor auth module','Build landing page',
+  'Triage 50 tickets','Migrate database','Add dark mode','Optimize slow queries','Write test suite',
+  'Set up CI pipeline','Debug memory leak','Localize onboarding','Audit permissions','Speed up search'];
 
 // Parallel array of rich multi-line descriptions for each job title.
 const JOB_DESCRIPTIONS = [
@@ -60,6 +57,7 @@ const DOOR = { x: 790, y: 800 };
 
 // ---------- pixel sprites ----------
 function personFrame(shirt, frame) {
+  // 12 wide. frame: 0 stand, 1 walk-a, 2 walk-b, 3 sit idle, 4 sit typing-a, 5 sit typing-b
   const S = 'S', H = 'H', T = 'T', P = 'P', X = 'X', d = '.', N = 'N';
   const legs = [
     ['...PP..PP...', '...PP..PP...', '...PP..PP...', '..PPP..PPP..', '..XXX..XXX..'],
@@ -111,6 +109,7 @@ function bakePerson(scene, key, shirtHex) {
 function hexRgb(h) { return [(h >> 16) & 255, (h >> 8) & 255, h & 255]; }
 
 // ----- state ----------
+// ----- state ----------
 function freshState() {
   return {
     cash: 100, day: 1, week: 1, dayT: 0, speed: 1, over: false,
@@ -119,19 +118,12 @@ function freshState() {
     jobs: [],          // inbox job cards {id,title,stars,pay,card}
     revenue: 0, spent: 0, nextJobIn: 8,
     jobSeq: 1, done: 0, failed: 0,
-    departments: [],   // {name:string, desks:[deskIdx]
+    departments: [],   // {name:string, desks:[deskIdx]}
     roster: [],        // unassigned models {model, id}
     quarter: 1,
     quarterWeeks: 0,
     profitTarget: 20,
     quarterStartCash: 100,
-    extraDesks: [], // added for shop purchases
-    extraChairs: [], // added for shop purchases
-    upgrades: { speed2: false }, // shop upgrades
-    unlockedProviders: ['claude', 'codex'], // initially available
-    unlockedFeatures: { extraFloor2: false }, // progression unlocks
-    unlockedFloors: 1,
-    // end of state
   };
 }
 
@@ -142,20 +134,28 @@ class Office extends Phaser.Scene {
     // load persisted state if available
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem('tt_state')); } catch(e) {}
+    this.S = freshState();
     this.currentDept = null;
     this.buildTextures();
     this.buildOffice();
+    // State must exist before the HUD builds (buildTopbar calls refreshTop).
+    // Restore then runs over it. Fix by Kratos Muse 2026-10-04: restore used
+    // to run before buildTopbar, throwing on undefined text objects and
+    // killing boot after reload.
     this.S = freshState();
     this.buildTopbar();
     this.buildSidebar();
     if (saved) this._restoreFromSnapshot(saved);
-    this.hint = this.add.text(475, 100, 'Buy a subscription (HIRE tab) → hire a model → drag jobs onto them', { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942', align: 'center' }).setOrigin(0.5).setDepth(50);
+    this.hint = this.add.text(475, 100, 'Buy a subscription (HIRE tab) → hire a model → drag jobs onto them',
+      { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942', align: 'center' }).setOrigin(0.5).setDepth(50);
     this.time.delayedCall(12000, () => this.hint && this.hint.destroy(), [], this);
     this.exposeHooks();
+    // Day/night overlay based on clock
     const { width, height } = this.scale;
     this.tintOverlay = this.add.rectangle(width/2, height/2, width, height, 0xffe0a0).setDepth(5);
     this.prevDay = this.S.day;
     this.updateTint();
+    // Tangent event timer: occasional staff wander off, wasting pool
     this.time.addEvent({ delay: 6000, loop: true, callback: this.maybeTangent, callbackScope: this });
     this.tangentActive = false;
     this.tangentStaff = null;
@@ -164,23 +164,28 @@ class Office extends Phaser.Scene {
 
   maybeTangent() {
     if (this.S.speed === 0) return;
+    // 5% chance each interval
     if (Math.random() < 0.05 && !this.tangentActive) {
+      // pick an idle staff member
       const idle = this.S.staff.find(s => !s.busy && !s.tangent);
       if (!idle) return;
       this.tangentActive = true;
       this.tangentStaff = idle;
       idle.tangent = true;
+      // move sprite to wander position
       const wanderX = idle.desk.x + (Math.random() * 100 - 50);
       const wanderY = idle.desk.y + (Math.random() * 100 - 50);
       this.tweens.add({ targets: idle.spr, x: wanderX, y: wanderY, duration: 1200, ease: 'Linear' });
+      // waste pool: deduct 5 from sub pool if any
       const model = MODELS[idle.model];
       const subId = model.sub;
       const sub = this.S.subs[subId];
       if (sub) {
         sub.wk = Math.max(0, sub.wk - 5);
         sub.h5 = Math.max(0, sub.h5 - 2);
-        this.showTangentToast();
       }
+      // show toast alert
+      this.showTangentToast();
     }
   }
 
@@ -189,11 +194,14 @@ class Office extends Phaser.Scene {
     const bg = this.add.graphics();
     bg.fillStyle(0x2a3852, 1).fillRoundedRect(tx - 200, ty - 30, 400, 60, 10);
     const msg = this.add.text(tx, ty, 'Staff wandered! Pool wasted.', { fontFamily: 'Courier New', fontSize: '16px', color: '#f5b942' }).setOrigin(0.5);
-    const recoverBtn = this.add.text(tx - 80, ty + 20, '[ RECOVER ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#4ade80', fontStyle: 'bold' }).setInteractive({ useHandCursor: true });
-    const pauseBtn = this.add.text(tx + 40, ty + 20, '[ PAUSE ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f87171', fontStyle: 'bold' }).setInteractive({ useHandCursor: true });
+    const recoverBtn = this.add.text(tx - 80, ty + 20, '[ RECOVER ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#4ade80', fontStyle: 'bold' })
+      .setInteractive({ useHandCursor: true });
+    const pauseBtn = this.add.text(tx + 40, ty + 20, '[ PAUSE ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f87171', fontStyle: 'bold' })
+      .setInteractive({ useHandCursor: true });
     const container = this.add.container(0, 0, [bg, msg, recoverBtn, pauseBtn]);
     this.tangentToast = container;
     recoverBtn.on('pointerdown', () => {
+      // restore pool values (simple: add back same amount)
       const idle = this.tangentStaff;
       if (idle) {
         const model = MODELS[idle.model];
@@ -201,40 +209,144 @@ class Office extends Phaser.Scene {
         if (sub) {
           sub.wk += 5;
           sub.h5 += 2;
-          this.tweens.add({ targets: idle.spr, x: idle.desk.x, y: idle.desk.y - 64, duration: 800, ease: 'Linear', onComplete: () => { this.sitDown(idle); } });
-          idle.tangent = false;
-          this.clearTangent();
         }
+        // move staff back to desk and sit
+        this.tweens.add({ targets: idle.spr, x: idle.desk.x, y: idle.desk.y - 64, duration: 800, ease: 'Linear', onComplete: () => {
+          this.sitDown(idle);
+        } });
+        idle.tangent = false;
       }
+      this.clearTangent();
     });
     pauseBtn.on('pointerdown', () => {
       this.S.speed = 0;
       this.updatePauseButton();
     });
+    // auto dismiss after 6 seconds
+    this.time.delayedCall(6000, () => this.clearTangent(), [], this);
   }
 
   clearTangent() {
-    if (this.tangentToast) {
-      this.tangentToast.destroy();
-      this.tangentToast = null;
-      this.tangentActive = false;
-    }
+    if (this.tangentToast) { this.tangentToast.destroy(); this.tangentToast = null; }
+    this.tangentActive = false;
     if (this.tangentStaff) this.tangentStaff.tangent = false;
     this.tangentStaff = null;
+    // refresh UI if needed
     this.renderSidebar();
   }
 
+  // Update tint overlay based on day (daytime vs night)
   updateTint() {
     const S = this.S;
+    // Define daytime: days 1-5, night: days 6-7
     if (S.day <= 5) {
+      // warm daylight tint
       this.tintOverlay.setFillStyle(0xffe0a0, 0.2);
     } else {
+      // deep blue/purple night tint
       this.tintOverlay.setFillStyle(0x001030, 0.2);
     }
   }
 
-  // ... (remain unchanged) ...
+  // ----- existing methods continue below -----
+  // ----- textures -----
+  buildTextures() {
+    for (const [mid, m] of Object.entries(MODELS)) bakePerson(this, 'p_' + mid, SUBS[m.sub].color);
+    // floor tile
+    const ft = this.textures.createCanvas('tile', 32, 32), fc = ft.getContext();
+    fc.fillStyle = '#3a3f4a'; fc.fillRect(0, 0, 32, 32);
+    fc.fillStyle = '#343945'; fc.fillRect(0, 0, 16, 16); fc.fillRect(16, 16, 16, 16);
+    fc.fillStyle = '#2c313b'; fc.fillRect(0, 31, 32, 1); fc.fillRect(31, 0, 1, 32);
+    ft.refresh();
+    // desk top
+    const dt = this.textures.createCanvas('desk', 56, 28), dc = dt.getContext();
+    dc.fillStyle = '#6b4a2f'; dc.fillRect(0, 0, 56, 28);
+    dc.fillStyle = '#7d5a3a'; dc.fillRect(0, 0, 56, 6);
+    dc.fillStyle = '#4a3220'; dc.fillRect(0, 26, 56, 2);
+    dt.refresh();
+  }
 
+  // ----- office -----
+  buildOffice() {
+    const OX = 0, OY = 64, OW = 950, OH = 736;
+    // floor
+    for (let x = 0; x < OW; x += 32) for (let y = 0; y < OH; y += 32)
+      this.add.image(OX + x + 16, OY + y + 16, 'tile').setDisplaySize(32, 32);
+    // rug
+    const rug = this.add.graphics();
+    rug.fillStyle(0x8a2f2f, 1).fillRect(360, 420, 230, 130);
+    rug.fillStyle(0xa8433a, 1).fillRect(372, 432, 206, 106);
+    rug.fillStyle(0x8a2f2f, 1).fillRect(384, 444, 182, 82);
+    // walls: top + left
+    const wall = this.add.graphics();
+    wall.fillStyle(0x232936, 1).fillRect(OX, OY - 26, OW, 26);
+    wall.fillStyle(0x1b2130, 1).fillRect(OX, OY - 26, 26, OH + 26);
+    // whiteboard with motto
+    const wb = this.add.graphics();
+    wb.fillStyle(0xdfe6ee, 1).fillRect(120, 70, 200, 110);
+    wb.fillStyle(0x8b98ad, 1).fillRect(120, 70, 200, 110).fillStyle(0xdfe6ee, 1).fillRect(124, 74, 192, 102);
+    this.add.text(220, 122, 'SHIP IT.', { fontFamily: 'Courier New', fontSize: '22px', color: '#b03a3a', fontStyle: 'bold' }).setOrigin(0.5);
+    // plant
+    const pl = this.add.graphics();
+    pl.fillStyle(0x6b4a2f, 1).fillRect(880, 640, 26, 30);
+    pl.fillStyle(0x2f8a4a, 1);
+    pl.fillCircle(893, 625, 16); pl.fillCircle(883, 635, 12); pl.fillCircle(903, 635, 12);
+    // water cooler
+    const wc = this.add.graphics();
+    wc.fillStyle(0xdfe6ee, 1).fillRect(890, 120, 24, 44);
+    wc.fillStyle(0x58c4dc, 1).fillRect(890, 100, 24, 22);
+    // door (bottom wall gap) + mat
+    const dw = this.add.graphics();
+    dw.fillStyle(0x232936, 1).fillRect(OX, OY + OH, DOOR.x - OX - 60, 26);
+    dw.fillStyle(0x232936, 1).fillRect(DOOR.x + 60, OY + OH, OW - (DOOR.x + 60 - OX), 26);
+    dw.fillStyle(0x4a3220, 1).fillRect(DOOR.x - 46, OY + OH - 4, 92, 30);
+    this.add.text(DOOR.x, OY + OH + 13, 'DOOR', { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' }).setOrigin(0.5);
+    // desks
+    this.deskObjs = DESKS.map((d, i) => {
+      const c = this.add.container(d.x, d.y).setDepth(10);
+      const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
+      const mon = this.add.graphics();
+      mon.fillStyle(0x1a1e28, 1).fillRect(-78, -52, 52, 34);
+      mon.fillStyle(0x58c4dc, 0.85).fillRect(-74, -48, 44, 26);
+      mon.fillStyle(0x1a1e28, 1).fillRect(-56, -18, 8, 10);
+      const kb = this.add.graphics();
+      kb.fillStyle(0xdfe6ee, 1).fillRect(-14, 22, 48, 12);
+      kb.fillStyle(0x8b98ad, 1);
+      for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
+      const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
+      // pool meters (text)
+      const h5Text = this.add.text(0, -150, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const wkText = this.add.text(0, -134, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
+      const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
+      // pool meters (bars)
+      const h5BarBg = this.add.graphics();
+      h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -112, 56, 8);
+      const h5Bar = this.add.graphics();
+      const wkBarBg = this.add.graphics();
+      wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -100, 56, 8);
+      const wkBar = this.add.graphics();
+      c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
+      const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx: i, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg };
+      c.setSize(168, 84).setInteractive({ useHandCursor: true });
+      c.on('pointerdown', () => this.toggleDeskDept(i));
+      return deskObj;
+    });
+    // office chairs at each desk (depth 8: behind seated staff at 9, in front of floor)
+    DESKS.forEach(d => {
+      const ch = this.add.graphics().setDepth(8);
+      const x = d.x, b = d.y - 28;
+      ch.fillStyle(0x2a3140, 1);
+      ch.fillRect(x - 13, b - 64, 26, 48);
+      ch.fillRect(x - 17, b - 18, 34, 10);
+      ch.fillRect(x - 3, b - 8, 6, 20);
+      ch.fillRect(x - 16, b + 10, 32, 6);
+      ch.fillStyle(0x39424f, 1);
+      ch.fillRect(x - 13, b - 64, 26, 8);
+    });
+  }
+
+  // ----- top bar -----
   buildTopbar() {
     const g = this.add.graphics();
     g.fillStyle(0x121826, 1).fillRect(0, 0, 1280, 64);
@@ -242,9 +354,9 @@ class Office extends Phaser.Scene {
     this.cashT = this.add.text(20, 20, '', { fontFamily: 'Courier New', fontSize: '24px', color: '#4ade80', fontStyle: 'bold' });
     this.clockT = this.add.text(220, 22, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#8b98ad' });
     this.burnT = this.add.text(430, 22, '', { fontFamily: 'Courier New', fontSize: '15px', color: '#f87171' });
+    // quarter timer and profit target
     this.quarterT = this.add.text(620, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#ffbf00' });
     this.profitT = this.add.text(770, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#66ff66' });
-    this.floorsT = this.add.text(950, 20, '', { fontFamily: 'Courier New', fontSize: '16px', color: '#f5b942' });
     const mk = (x, label, cb) => {
       const b = this.add.container(x, 32);
       const bg = this.add.graphics();
@@ -256,23 +368,71 @@ class Office extends Phaser.Scene {
       b._label = t; // store reference for dynamic updates
       return b;
     };
-    // pause button: visual toggles between 'II' (running) and '▶' (paused)
-    this.pauseBtn = mk(1080, 'II', () => { this.S.speed = this.S.speed === 0 ? 1 : 0; this.updatePauseButton(); });
+    // pause button: visual toggles between '▶' (running) and 'II' (paused)
+    this.pauseBtn = mk(1080, '\u25b6', () => { this.S.speed = this.S.speed === 0 ? 1 : 0; this.updatePauseButton(); });
     mk(1150, '1×', () => { this.S.speed = 1; this.updatePauseButton(); });
     mk(1220, '2×', () => { this.S.speed = 2; this.updatePauseButton(); });
     this.refreshTop();
   }
-
+  // Update pause button label to reflect current speed state
   updatePauseButton() {
     if (!this.pauseBtn) return;
-    // When speed is 0, the game is paused -> show play symbol; otherwise show pause symbol
-    const label = this.S.speed === 0 ? '\u25b6' : 'II';
+    const label = this.S.speed === 0 ? 'II' : '\u25b6';
     this.pauseBtn._label.setText(label);
   }
+  weeklyBurn() {
+    let b = RENT + (this.quarterRentIncrease || 0);
+    for (const id of Object.keys(this.S.subs)) b += SUBS[id].price;
+    return b;
+  }
+  refreshTop() {
+    const S = this.S;
+    this.cashT.setText('$' + Math.round(S.cash));
+    this.cashT.setColor(S.cash < 40 ? '#f87171' : '#4ade80');
+    this.clockT.setText(`WEEK ${S.week} · DAY ${S.day}/7`);
+    this.burnT.setText(`burn -$${this.weeklyBurn()}/wk`);
+    // quarter timer display (13 weeks per quarter)
+    const weeksLeft = Math.max(0, 13 - S.quarterWeeks);
+    this.quarterT.setText(`Q${S.quarter} ${weeksLeft}w`);
+    // profit progress display
+    const profitSoFar = Math.round(S.cash - S.quarterStartCash);
+    this.profitT.setText(`$${profitSoFar}/${S.profitTarget}`);
+  }
 
-  // ... (other methods omitted for brevity) ...
+  // ----- sidebar -----
+  buildSidebar() {
+    const SX = 950;
+    const g = this.add.graphics();
+    g.fillStyle(0x0e131c, 1).fillRect(SX, 64, 330, 736);
+    g.lineStyle(1, 0x1f2a3f, 1).lineBetween(SX, 64, SX, 800);
+    this.tab = 'inbox';
+    const mkTab = (x, label, id) => {
+      const t = this.add.text(x, 84, label, { fontFamily: 'Courier New', fontSize: '16px', color: '#8b98ad', fontStyle: 'bold' })
+        .setInteractive({ useHandCursor: true })
+        .setDepth(30); // PAN-35: tabs must render above job cards (sideC is depth 20; first card spans y70-190 over the tab bar at y84)
+      t.on('pointerdown', () => { this.tab = id; this.renderSidebar(); });
+      t.setData('id', id);
+      return t;
+    };
+    this.tabInbox = mkTab(SX + 24, 'INBOX', 'inbox');
+    this.tabHire = mkTab(SX + 130, 'HIRE', 'hire');
+    this.tabDept = mkTab(SX + 236, 'DEPT', 'dept');
+    this.jobSourceText = this.add.text(SX + 20, 120, 'jobs: LOCAL', {fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942'}).setDepth(30);
+    this.sideC = this.add.container(0, 0).setDepth(20);
+    this.renderSidebar();
+  }
+  // ----- UI -----
+  renderSidebar() {
+    this.sideC.removeAll(true);
+    this.tabInbox.setColor(this.tab === 'inbox' ? '#f5b942' : '#8b98ad');
+    this.tabHire.setColor(this.tab === 'hire' ? '#f5b942' : '#8b98ad');
+    this.tabDept.setColor(this.tab === 'dept' ? '#f5b942' : '#8b98ad');
+    const SX = 950;
+    if (this.tab === 'inbox') this.renderInbox(SX);
+    else if (this.tab === 'hire') this.renderHire(SX);
+    else if (this.tab === 'dept') this.renderDept(SX);
+  }
 
-// HEAD version start
   // Compact action resets context and risk
   compact(st) {
     const S = this.S;
@@ -794,8 +954,6 @@ class Office extends Phaser.Scene {
     S.quarterWeeks += 1;
     if (S.quarterWeeks >= 13) this.evaluateQuarter();
   }
-  // Game over screen
-
   gameOver() {
     const S = this.S; S.over = true;
     const o = this.add.container(0, 0).setDepth(200);
@@ -811,11 +969,135 @@ class Office extends Phaser.Scene {
     bbg.fillStyle(0xf5b942, 1).fillRoundedRect(-110, -28, 220, 56, 10);
     btn.add([bbg, this.add.text(0, 0, 'TRY AGAIN', { fontFamily: 'Courier New', fontSize: '20px', color: '#111111', fontStyle: 'bold' }).setOrigin(0.5)]);
     btn.setSize(220, 56).setInteractive({ useHandCursor: true });
-    btn.on('pointerup', () => { localStorage.removeItem('tt_state'); this.scene.restart(); });
+    btn.on('pointerdown', () => this.scene.restart());
     o.add(btn);
   }
 
-  // ... other methods ...
+  evaluateQuarter() {
+    const S = this.S;
+    const profit = Math.round(S.cash - S.quarterStartCash);
+    if (profit >= S.profitTarget) {
+      // win
+      S.quarter += 1;
+      // increase rent for next quarter
+      this.quarterRentIncrease = Math.round(RENT * 0.1 * (S.quarter - 1));
+      // raise profit target
+      S.profitTarget += 10;
+      // reset quarter tracking
+      S.quarterStartCash = S.cash;
+      S.quarterWeeks = 0;
+      this.showQuarterWin(profit);
+    } else {
+      // lose – use existing BANKRUPT overlay
+      this.gameOver();
+    }
+    this.refreshTop();
+  }
+
+  showQuarterWin(profit) {
+    const S = this.S;
+    const overlay = this.add.container(0, 0).setDepth(200);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a0d13, 0.88).fillRect(0, 0, 1280, 800);
+    overlay.add([bg,
+      this.add.text(640, 250, 'QUARTER WON', { fontFamily: 'Courier New', fontSize: '48px', color: '#66ff66', fontStyle: 'bold' }).setOrigin(0.5),
+      this.add.text(640, 320, `Profit $${profit} met target $${S.profitTarget - 10}`, { fontFamily: 'Courier New', fontSize: '20px', color: '#eceff4' }).setOrigin(0.5),
+      this.add.text(640, 380, `Next quarter rent ↑ $${this.quarterRentIncrease || 0}`, { fontFamily: 'Courier New', fontSize: '18px', color: '#ffbf00' }).setOrigin(0.5)
+    ]);
+    const btn = this.add.container(640, 460);
+    const bbg = this.add.graphics();
+    bbg.fillStyle(0xf5b942, 1).fillRoundedRect(-110, -28, 220, 56, 10);
+    btn.add([bbg, this.add.text(0, 0, 'CONTINUE', { fontFamily: 'Courier New', fontSize: '20px', color: '#111111', fontStyle: 'bold' }).setOrigin(0.5)]);
+    btn.setSize(220, 56).setInteractive({ useHandCursor: true });
+    btn.on('pointerdown', () => {
+      overlay.destroy();
+    });
+    overlay.add(btn);
+  }
+
+
+  // ----- persistence helpers -----
+  _snapshot() {
+    const S = this.S;
+    return {
+      cash: S.cash,
+      day: S.day,
+      week: S.week,
+      speed: S.speed,
+      revenue: S.revenue,
+      spent: S.spent,
+      roster: S.roster,
+      subs: S.subs,
+      departments: S.departments || [],
+      staff: S.staff.map(st => ({ model: st.model, deskIndex: this.deskObjs.indexOf(st.desk) })),
+      // jobs carry j.card (Phaser container) once rendered — strip to plain fields
+      // or JSON.stringify throws on circular refs and _persist silently dies (D-001)
+      jobs: S.jobs.map(j => ({ id: j.id, title: j.title, stars: j.stars, pay: j.pay })),
+      nextJobIn: S.nextJobIn,
+      jobSeq: S.jobSeq,
+      done: S.done,
+      failed: S.failed,
+    };
+  }
+
+  _persist() {
+    try { localStorage.setItem('tt_state', JSON.stringify(this._snapshot())); } catch(e) {}
+  }
+
+  _restoreFromSnapshot(saved) {
+    this.S = freshState();
+    this.S.cash = saved.cash;
+    this.S.day = saved.day;
+    this.S.week = saved.week;
+    this.S.speed = saved.speed;
+    this.updatePauseButton();
+    this.S.revenue = saved.revenue;
+    this.S.spent = saved.spent;
+    this.S.roster = saved.roster || [];
+    this.S.subs = saved.subs || {};
+    this.S.departments = saved.departments || [];
+    this.S.jobs = saved.jobs || [];
+    this.S.nextJobIn = saved.nextJobIn;
+    this.S.jobSeq = saved.jobSeq;
+    this.S.done = saved.done;
+    this.S.failed = saved.failed;
+    if (Array.isArray(saved.staff)) {
+      saved.staff.forEach(stSnap => {
+        const desk = this.deskObjs[stSnap.deskIndex];
+        if (!desk) return;
+        const mid = stSnap.model;
+        const spr = this.add.image(DOOR.x, DOOR.y + 20, 'p_' + mid + '0').setScale(3).setDepth(15);
+        const st = { model: mid, desk, spr, busy: false, job: null, frame: 0, walkT: 0 };
+        this.S.staff.push(st);
+        desk.taken = true;
+        desk.plate.setText(MODELS[mid].name.toUpperCase());
+        spr.setInteractive({ useHandCursor: true });
+        spr.on('pointerdown', () => this.fire(st));
+        this.sitDown(st);
+      });
+    }
+    this.refreshTop();
+    this.renderSidebar();
+  }
+
+  // ----- test hooks -----
+  exposeHooks() {
+    window.__tt = {
+      state: this.S,
+      scene: this,
+      buySub: (id) => this.buySub(id),
+      hire: (mid) => this.hire(mid),
+      fire: (st) => this.fire(st),
+      spawnJob: (...a) => this.spawnJob(...a),
+      assign: (jobId, deskIdx) => this.assignJob(jobId, this.deskObjs[deskIdx]),
+      desks: this.deskObjs,
+      cash: () => Math.round(this.S.cash),
+      departments: this.S.departments,
+      currentDept: this.currentDept,
+      // Tangent event state for testing
+      tangentActive: () => this.tangentActive,
+    };
+  }
 }
 
 new Phaser.Game({
