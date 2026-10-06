@@ -500,8 +500,8 @@ class Office extends Phaser.Scene {
       b._label = t; // store reference for dynamic updates
       return b;
     };
-    // pause button: visual toggles between '▶' (running) and 'II' (paused)
-    this.pauseBtn = mk(1080, '\u25b6', () => { this.S.speed = this.S.speed === 0 ? 1 : 0; this.updatePauseButton(); });
+    // pause button shows the ACTION: 'II' while running (click to pause), '▶' while paused (click to resume)
+    this.pauseBtn = mk(1080, 'II', () => { this.S.speed = this.S.speed === 0 ? 1 : 0; this.updatePauseButton(); });
     // BUY ROOM button added to top bar
     const buyRoomBtn = mk(1020, 'BUY ROOM', () => this.purchaseSecondRoom());
     // PAUSED indicator text, shown when speed == 0
@@ -514,7 +514,7 @@ class Office extends Phaser.Scene {
   // Update pause button label to reflect current speed state and paused indicator
   updatePauseButton() {
     if (!this.pauseBtn) return;
-    const label = this.S.speed === 0 ? 'II' : '\u25b6';
+    const label = this.S.speed === 0 ? '\u25b6' : 'II';
     this.pauseBtn._label.setText(label);
     // Show or hide PAUSED label
     if (this.pausedLabel) {
