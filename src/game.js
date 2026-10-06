@@ -1038,7 +1038,11 @@ class Office extends Phaser.Scene {
     this.S.cash = saved.cash;
     this.S.day = saved.day;
     this.S.week = saved.week;
-    this.S.speed = saved.speed;
+    if (typeof saved.speed === 'number') {
+      this.S.speed = saved.speed;
+    } else {
+      this.S.speed = 1;
+    }
     this.updatePauseButton();
     this.S.revenue = saved.revenue;
     this.S.spent = saved.spent;
