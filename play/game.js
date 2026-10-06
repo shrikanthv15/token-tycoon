@@ -375,15 +375,22 @@ class Office extends Phaser.Scene {
     };
     // pause button: visual toggles between '▶' (running) and 'II' (paused)
     this.pauseBtn = mk(1080, '\u25b6', () => { this.S.speed = this.S.speed === 0 ? 1 : 0; this.updatePauseButton(); });
+    // PAUSED indicator text, shown when speed == 0
+    this.pausedLabel = this.add.text(1080, 10, 'PAUSED', { fontFamily: 'Courier New', fontSize: '16px', color: '#f5b942' })
+      .setOrigin(0.5).setDepth(25).setVisible(this.S.speed === 0);
     mk(1150, '1×', () => { this.S.speed = 1; this.updatePauseButton(); });
     mk(1220, '2×', () => { this.S.speed = 2; this.updatePauseButton(); });
     this.refreshTop();
   }
-  // Update pause button label to reflect current speed state
+  // Update pause button label to reflect current speed state and paused indicator
   updatePauseButton() {
     if (!this.pauseBtn) return;
     const label = this.S.speed === 0 ? 'II' : '\u25b6';
     this.pauseBtn._label.setText(label);
+    // Show or hide PAUSED label
+    if (this.pausedLabel) {
+      this.pausedLabel.setVisible(this.S.speed === 0);
+    }
   }
   weeklyBurn() {
     let b = RENT + (this.quarterRentIncrease || 0);
