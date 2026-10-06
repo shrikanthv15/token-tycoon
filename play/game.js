@@ -15,6 +15,11 @@ function isNemotronEnabled(){
 const SUBS = {
   claude: { name: 'Claude', price: 20, color: 0xd97757, css: '#d97757', h5: 400, wk: 2000 },
   codex:  { name: 'Codex',  price: 20, color: 0x10a37f, css: '#10a37f', h5: 300, wk: 1500 },
+  openrouter: { name: 'OpenRouter', price: 30, color: 0xffa500, css: '#ffa500', h5: 350, wk: 1800 },
+  anthropic: { name: 'Anthropic', price: 35, color: 0x00aaff, css: '#00aaff', h5: 380, wk: 1900 },
+  gemini: { name: 'Gemini', price: 32, color: 0x8e44ad, css: '#8e44ad', h5: 360, wk: 1850 },
+  openclaw: { name: 'OpenClaw', price: 28, color: 0x27ae60, css: '#27ae60', h5: 340, wk: 1700 },
+  hyperbrain: { name: 'HyperBrain', price: 40, color: 0xe74c3c, css: '#e74c3c', h5: 420, wk: 2100 },
 };
 const MODELS = {
   haiku: { name: 'Haiku',        sub: 'claude', cap: 1, cost: 40  },
@@ -494,19 +499,23 @@ class Office extends Phaser.Scene {
   }
   renderHire(SX) {
     const S = this.S;
+    const UNLOCK_WEEKS = { claude: 1, codex: 1, openrouter: 3, anthropic: 5, gemini: 7, openclaw: 9, hyperbrain: 11 };
     const subRows = [];
     for (const [sid, sub] of Object.entries(SUBS)) {
       const owned = !!S.subs[sid];
+      const unlocked = owned || (S.week >= (UNLOCK_WEEKS[sid] || 1));
       // sub row
       const row = this.add.container(SX + 165, 0);
       const bg = this.add.graphics();
-      bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -26, 290, 52, 8);
+      // grey out locked providers
+      const bgColor = unlocked ? 0x121826 : 0x0a0d13;
+      bg.fillStyle(bgColor, 1).fillRoundedRect(-145, -26, 290, 52, 8);
       bg.lineStyle(2, owned ? 0x4ade80 : 0x1f2a3f, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
       row.add([bg,
         this.add.text(-130, -18, sub.name, { fontFamily: 'Courier New', fontSize: '15px', color: sub.css, fontStyle: 'bold' }),
-        this.add.text(-130, 4, owned ? 'active' : `$${sub.price}/wk`, { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
+        this.add.text(-130, 4, owned ? 'active' : (unlocked ? `$${sub.price}/wk` : `[ LOCKED: week ${UNLOCK_WEEKS[sid]} ]`), { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
       ]);
-      if (!owned) {
+      if (!owned && unlocked) {
         const b = this.add.text(110, -8, '[ BUY ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942', fontStyle: 'bold' })
           .setInteractive({ useHandCursor: true });
         b.on('pointerdown', () => this.buySub(sid));
