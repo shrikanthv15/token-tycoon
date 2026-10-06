@@ -159,17 +159,10 @@ class Office extends Phaser.Scene {
       { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942', align: 'center' }).setOrigin(0.5).setDepth(50);
     this.time.delayedCall(12000, () => this.hint && this.hint.destroy(), [], this);
     this.exposeHooks();
-    // Purchase second room with key R (cost 200)
-    this.input.keyboard.on('keydown-R', () => {
-      if (!this.S.rooms.second && this.S.cash >= 200) {
-        this.S.rooms.second = true;
-        this.S.extraRent = 50;
-        this.S.cash -= 200;
-        this.flashText(DOOR.x, DOOR.y - 20, 'SECOND ROOM BOUGHT', '#4ade80');
-        this.refreshTop();
-+        this._persist();
-      }
-    });
+    // Purchase second room with key R (cost 200) and [BUY ROOM] button
+    this.input.keyboard.on('keydown-R', () => this.purchaseSecondRoom());
+    // Add UI button for buying the second room
+    const buyRoomBtn = mk(1020, 'BUY ROOM', () => this.purchaseSecondRoom());
     // Day/night overlay based on clock
     const { width, height } = this.scale;
     this.tintOverlay = this.add.rectangle(width/2, height/2, width, height, 0xffe0a0).setDepth(5);
@@ -370,6 +363,10 @@ class Office extends Phaser.Scene {
       const wkBarBg = this.add.graphics();
       wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -100, 56, 8);
       const wkBar = this.add.graphics();
+      // Hide desks until second room is purchased
+      const visible = !!this.S.rooms.second;
+      c.setVisible(visible);
+      plate.setVisible(visible);
       c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
       const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx: i, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg };
       c.setSize(168, 84).setInteractive({ useHandCursor: true });
@@ -388,6 +385,89 @@ class Office extends Phaser.Scene {
       ch.fillStyle(0x39424f, 1);
       ch.fillRect(x - 13, b - 64, 26, 8);
     });
+  }
+
+  // ----- second room helpers -----
+  purchaseSecondRoom() {
+    if (this.S.rooms.second || this.S.cash < 200) return;
+    this.S.rooms.second = true;
+    this.S.extraRent = 50;
+    this.S.cash -= 200;
+    this.flashText(DOOR.x, DOOR.y - 20, 'SECOND ROOM BOUGHT', '#4ade80');
+    // reveal all desks (original and extra)
+    this.deskObjs.forEach(d => { d.c.setVisible(true); d.plate.setVisible(true); });
+    // add extra desks if not already added
+    if (!this.secondRoomAdded) {
+      this.addSecondRoomDesks();
+      this.secondRoomAdded = true;
+    }
+    this.renderSecondRoom();
+    this.refreshTop();
+    this._persist();
+  }
+
+  addSecondRoomDesks() {
+    // positions for extra desks (2-4 desks) left of sidebar
+    const extraPositions = [
+      { x: 300, y: 150 },
+      { x: 460, y: 150 },
+      { x: 300, y: 350 },
+      { x: 460, y: 350 },
+    ];
+    const count = Phaser.Math.Between(2, 4);
+    const shuffled = Phaser.Utils.Array.Shuffle(extraPositions);
+    for (let i = 0; i < count; i++) {
+      const pos = shuffled[i];
+      const idx = this.deskObjs.length;
+      const c = this.add.container(pos.x, pos.y).setDepth(10);
+      const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
+      const mon = this.add.graphics();
+      mon.fillStyle(0x1a1e28, 1).fillRect(-78, -52, 52, 34);
+      mon.fillStyle(0x58c4dc, 0.85).fillRect(-74, -48, 44, 26);
+      mon.fillStyle(0x1a1e28, 1).fillRect(-56, -18, 8, 10);
+      const kb = this.add.graphics();
+      kb.fillStyle(0xdfe6ee, 1).fillRect(-14, 22, 48, 12);
+      kb.fillStyle(0x8b98ad, 1);
+      for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
+      const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' }).setOrigin(0.5);
+      const h5Text = this.add.text(0, -150, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const wkText = this.add.text(0, -134, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
+      const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
+      const h5BarBg = this.add.graphics();
+      h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -112, 56, 8);
+      const h5Bar = this.add.graphics();
+      const wkBarBg = this.add.graphics();
+      wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -100, 56, 8);
+      const wkBar = this.add.graphics();
+      c.setVisible(true);
+      plate.setVisible(true);
+      c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
+      const deskObj = { x: pos.x, y: pos.y, c, plate, taken: false, idx, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg, secondRoom: true };
+      c.setSize(168, 84).setInteractive({ useHandCursor: true });
+      c.on('pointerdown', () => this.toggleDeskDept(idx));
+      this.deskObjs.push(deskObj);
+    }
+  }
+
+  renderSecondRoom() {
+    // outline covering all second‑room desks (original + extra)
+    const rooms = this.deskObjs.filter(d => d.secondRoom || (!this.S.rooms.second && false));
+    if (!rooms.length) return;
+    const margin = 20;
+    const xs = rooms.map(d => d.x);
+    const ys = rooms.map(d => d.y);
+    const minX = Math.min(...xs) - margin;
+    const maxX = Math.max(...xs) + margin;
+    const minY = Math.min(...ys) - margin;
+    const maxY = Math.max(...ys) + margin;
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const outline = this.add.graphics().setDepth(5);
+    outline.lineStyle(2, 0xf5b942, 1);
+    outline.strokeRect(minX, minY, width, height);
+    this.add.text(minX + width / 2, minY + 12, 'SECOND ROOM', { fontFamily: 'Courier New', fontSize: '16px', color: '#f5b942', fontStyle: 'bold' }).setOrigin(0.5).setDepth(6);
+    this.secondRoomGraphics = outline;
   }
 
   // ----- top bar -----
