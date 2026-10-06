@@ -95,6 +95,8 @@ const PAL = { H: [90, 60, 40], S: [235, 200, 170], T: null, P: [50, 70, 120], X:
 
 function bakePerson(scene, key, shirtHex) {
   for (let f = 0; f < 6; f++) {
+    // Guard: skip if texture already exists (scene.restart retains old textures)
+    if (scene.textures.exists(key + f)) continue;
     const rows = personFrame(shirtHex, f);
     const w = 12, h = rows.length;
     const t = scene.textures.createCanvas(key + f, w, h);
@@ -276,19 +278,23 @@ class Office extends Phaser.Scene {
   // ----- existing methods continue below -----
   // ----- textures -----
   buildTextures() {
+    // Guard: skip tile texture if it already exists (scene.restart retains it)
+    if (!this.textures.exists('tile')) {
+      const ft = this.textures.createCanvas('tile', 32, 32), fc = ft.getContext();
+      fc.fillStyle = '#3a3f4a'; fc.fillRect(0, 0, 32, 32);
+      fc.fillStyle = '#343945'; fc.fillRect(0, 0, 16, 16); fc.fillRect(16, 16, 16, 16);
+      fc.fillStyle = '#2c313b'; fc.fillRect(0, 31, 32, 1); fc.fillRect(31, 0, 1, 32);
+      ft.refresh();
+    }
     for (const [mid, m] of Object.entries(MODELS)) bakePerson(this, 'p_' + mid, SUBS[m.sub].color);
-    // floor tile
-    const ft = this.textures.createCanvas('tile', 32, 32), fc = ft.getContext();
-    fc.fillStyle = '#3a3f4a'; fc.fillRect(0, 0, 32, 32);
-    fc.fillStyle = '#343945'; fc.fillRect(0, 0, 16, 16); fc.fillRect(16, 16, 16, 16);
-    fc.fillStyle = '#2c313b'; fc.fillRect(0, 31, 32, 1); fc.fillRect(31, 0, 1, 32);
-    ft.refresh();
     // desk top
-    const dt = this.textures.createCanvas('desk', 56, 28), dc = dt.getContext();
-    dc.fillStyle = '#6b4a2f'; dc.fillRect(0, 0, 56, 28);
-    dc.fillStyle = '#7d5a3a'; dc.fillRect(0, 0, 56, 6);
-    dc.fillStyle = '#4a3220'; dc.fillRect(0, 26, 56, 2);
-    dt.refresh();
+    if (!this.textures.exists('desk')) {
+      const dt = this.textures.createCanvas('desk', 56, 28), dc = dt.getContext();
+      dc.fillStyle = '#6b4a2f'; dc.fillRect(0, 0, 56, 28);
+      dc.fillStyle = '#7d5a3a'; dc.fillRect(0, 0, 56, 6);
+      dc.fillStyle = '#4a3220'; dc.fillRect(0, 26, 56, 2);
+      dt.refresh();
+    }
   }
 
   // ----- office -----
