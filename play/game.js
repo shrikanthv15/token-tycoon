@@ -985,7 +985,7 @@ class Office extends Phaser.Scene {
     bbg.fillStyle(0xf5b942, 1).fillRoundedRect(-110, -28, 220, 56, 10);
     btn.add([bbg, this.add.text(0, 0, 'TRY AGAIN', { fontFamily: 'Courier New', fontSize: '20px', color: '#111111', fontStyle: 'bold' }).setOrigin(0.5)]);
     btn.setSize(220, 56).setInteractive({ useHandCursor: true });
-    btn.on('pointerdown', () => this.scene.restart());
+    btn.on('pointerdown', () => { localStorage.removeItem('tt_state'); this.scene.restart(); });
     o.add(btn);
   }
 
