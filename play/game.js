@@ -429,20 +429,127 @@ class Office extends Phaser.Scene {
     this.tabInbox = mkTab(SX + 24, 'INBOX', 'inbox');
     this.tabHire = mkTab(SX + 130, 'HIRE', 'hire');
     this.tabDept = mkTab(SX + 236, 'DEPT', 'dept');
+    this.tabShop = mkTab(SX + 342, 'SHOP', 'shop');
     this.jobSourceText = this.add.text(SX + 20, 120, 'jobs: LOCAL', {fontFamily: 'Courier New', fontSize: '14px', color: '#f5b942'}).setDepth(30);
     this.sideC = this.add.container(0, 0).setDepth(20);
     this.renderSidebar();
   }
+
+  
   // ----- UI -----
   renderSidebar() {
     this.sideC.removeAll(true);
     this.tabInbox.setColor(this.tab === 'inbox' ? '#f5b942' : '#8b98ad');
     this.tabHire.setColor(this.tab === 'hire' ? '#f5b942' : '#8b98ad');
     this.tabDept.setColor(this.tab === 'dept' ? '#f5b942' : '#8b98ad');
+    this.tabShop.setColor(this.tab === 'shop' ? '#f5b942' : '#8b98ad');
     const SX = 950;
     if (this.tab === 'inbox') this.renderInbox(SX);
     else if (this.tab === 'hire') this.renderHire(SX);
     else if (this.tab === 'dept') this.renderDept(SX);
+    else if (this.tab === 'shop') this.renderShop(SX);
+  }
+
+  // ----- shop UI -----
+  renderShop(SX) {
+    const items = [
+      { name: 'Extra Chair', cost: 5, action: () => this.buyChair() },
+      { name: 'Extra Desk', cost: 10, action: () => this.buyDesk() },
+    ];
+    let y = 155;
+    items.forEach(item => {
+      const row = this.add.container(SX + 165, y);
+      const bg = this.add.graphics();
+      bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -26, 290, 52, 8);
+      bg.lineStyle(2, 0x4ade80, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
+      const txt = this.add.text(-130, -8, `${item.name} – $${item.cost}`, { fontFamily: 'Courier New', fontSize: '15px', color: '#eceff4', fontStyle: 'bold' });
+      const btn = this.add.text(90, -8, '[ BUY ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942', fontStyle: 'bold' })
+        .setInteractive({ useHandCursor: true });
+      btn.on('pointerdown', () => {
+        if (this.S.cash >= item.cost) {
+          this.S.cash -= item.cost;
+          item.action();
+          this.refreshTop();
+          this.renderShop(SX);
+        } else {
+          this.flashText(640, 100, 'NOT ENOUGH CASH', '#f87171');
+        }
+      });
+      row.add([bg, txt, btn]);
+      this.sideC.add(row);
+      y += 62;
+    });
+    this.cashT.setText('$' + Math.round(this.S.cash));
+  }
+
+  // Purchase helper for extra chair
+  buyChair() {
+    // Place chair near first desk (offset)
+    const d = this.deskObjs[0];
+    const x = d.x + 80;
+    const y = d.y - 28;
+    const ch = this.add.graphics().setDepth(8);
+    ch.fillStyle(0x2a3140, 1);
+    ch.fillRect(x - 13, y - 64, 26, 48);
+    ch.fillRect(x - 17, y - 18, 34, 10);
+    ch.fillRect(x - 3, y - 8, 6, 20);
+    ch.fillRect(x - 16, y + 10, 32, 6);
+    ch.fillStyle(0x39424f, 1);
+    ch.fillRect(x - 13, y - 64, 26, 8);
+  }
+
+  // Purchase helper for extra desk
+  buyDesk() {
+    // Find a free spot based on existing desks count
+    const idx = this.deskObjs.length;
+    const baseX = 220;
+    const baseY = 330;
+    const x = baseX + (idx % 2) * 340; // alternate columns
+    const y = baseY + Math.floor(idx / 2) * 270; // rows
+    const desk = { x, y };
+    // Add to DESKS array for consistency
+    DESKS.push(desk);
+    // Reuse desk creation code (similar to buildOffice's loop)
+    const c = this.add.container(desk.x, desk.y).setDepth(10);
+    const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
+    const mon = this.add.graphics();
+    mon.fillStyle(0x1a1e28, 1).fillRect(-78, -52, 52, 34);
+    mon.fillStyle(0x58c4dc, 0.85).fillRect(-74, -48, 44, 26);
+    mon.fillStyle(0x1a1e28, 1).fillRect(-56, -18, 8, 10);
+    const kb = this.add.graphics();
+    kb.fillStyle(0xdfe6ee, 1).fillRect(-14, 22, 48, 12);
+    kb.fillStyle(0x8b98ad, 1);
+    for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
+    const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' }).setOrigin(0.5);
+    const h5Text = this.add.text(0, -150, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+    const wkText = this.add.text(0, -134, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+    const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
+    const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad' }).setOrigin(0.5);
+    const h5BarBg = this.add.graphics();
+    h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -112, 56, 8);
+    const h5Bar = this.add.graphics();
+    const wkBarBg = this.add.graphics();
+    wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -100, 56, 8);
+    const wkBar = this.add.graphics();
+    c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
+    const deskObj = { x: desk.x, y: desk.y, c, plate, taken: false, idx, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg };
+    c.setSize(168, 84).setInteractive({ useHandCursor: true });
+    c.on('pointerdown', () => this.toggleDeskDept(this.deskObjs.length));
+    this.deskObjs.push(deskObj);
+  }
+
+  // ----- UI -----
+  renderSidebar() {
+    this.sideC.removeAll(true);
+    this.tabInbox.setColor(this.tab === 'inbox' ? '#f5b942' : '#8b98ad');
+    this.tabHire.setColor(this.tab === 'hire' ? '#f5b942' : '#8b98ad');
+    this.tabDept.setColor(this.tab === 'dept' ? '#f5b942' : '#8b98ad');
+    this.tabShop.setColor(this.tab === 'shop' ? '#f5b942' : '#8b98ad');
+    const SX = 950;
+    if (this.tab === 'inbox') this.renderInbox(SX);
+    else if (this.tab === 'hire') this.renderHire(SX);
+    else if (this.tab === 'dept') this.renderDept(SX);
+    else if (this.tab === 'shop') this.renderShop(SX);
   }
 
   // Compact action resets context and risk
