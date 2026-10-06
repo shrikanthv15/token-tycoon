@@ -133,6 +133,8 @@ function freshState() {
     profitTarget: 20,
     quarterStartCash: 100,
     extraDesks: [],
+    rooms: { second: false },
+    extraRent: 0,
   };
 }
 
@@ -159,6 +161,12 @@ class Office extends Phaser.Scene {
       { fontFamily: 'Courier New', fontSize: '15px', color: '#f5b942', align: 'center' }).setOrigin(0.5).setDepth(50);
     this.time.delayedCall(12000, () => this.hint && this.hint.destroy(), [], this);
     this.exposeHooks();
+    // Purchase second room with key R (cost 200) and [BUY ROOM] button
+    this.input.keyboard.on('keydown-R', () => this.purchaseSecondRoom());
+    // Add UI button for buying the second room inside topbar
+    // (moved from create to buildTopbar)
+    // The button will be created in buildTopbar after the pause button.
+
     // Day/night overlay based on clock
     const { width, height } = this.scale;
     this.tintOverlay = this.add.rectangle(width/2, height/2, width, height, 0xffe0a0).setDepth(5);
@@ -386,6 +394,90 @@ class Office extends Phaser.Scene {
     return deskObj;
   }
 
+  // ----- second room helpers -----
+  purchaseSecondRoom() {
+    if (this.S.rooms.second || this.S.cash < 200) return;
+    this.S.rooms.second = true;
+    this.S.extraRent = 50;
+    this.S.cash -= 200;
+    this.flashText(DOOR.x, DOOR.y - 20, 'SECOND ROOM BOUGHT', '#4ade80');
+    // reveal all desks (original and extra)
+    this.deskObjs.forEach(d => { d.c.setVisible(true); d.plate.setVisible(true); });
+    // add extra desks if not already added
+    if (!this.secondRoomAdded) {
+      this.addSecondRoomDesks();
+      this.secondRoomAdded = true;
+    }
+    this.renderSecondRoom();
+    this.refreshTop();
+    this._persist();
+  }
+
+  addSecondRoomDesks(savedPositions) {
+    // positions for extra desks (exact deterministic set)
+    const fixedPositions = [
+      { x: 300, y: 150 },
+      { x: 460, y: 150 },
+      { x: 620, y: 150 },
+      { x: 300, y: 480 },
+    ];
+    const positions = Array.isArray(savedPositions) && savedPositions.length ? savedPositions : fixedPositions;
+    positions.forEach((pos, i) => {
+      const idx = this.deskObjs.length;
+      const c = this.add.container(pos.x, pos.y).setDepth(10);
+      const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
+      const mon = this.add.graphics();
+      mon.fillStyle(0x1a1e28, 1).fillRect(-78, -52, 52, 34);
+      mon.fillStyle(0x58c4dc, 0.85).fillRect(-74, -48, 44, 26);
+      mon.fillStyle(0x1a1e28, 1).fillRect(-56, -18, 8, 10);
+      const kb = this.add.graphics();
+      kb.fillStyle(0xdfe6ee, 1).fillRect(-14, 22, 48, 12);
+      kb.fillStyle(0x8b98ad, 1);
+      for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
+      const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' }).setOrigin(0.5);
+      const h5Text = this.add.text(0, -150, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const wkText = this.add.text(0, -134, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+      const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
+      const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
+      const h5BarBg = this.add.graphics();
+      h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -112, 56, 8);
+      const h5Bar = this.add.graphics();
+      const wkBarBg = this.add.graphics();
+      wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -100, 56, 8);
+      const wkBar = this.add.graphics();
+      c.setVisible(true);
+      plate.setVisible(true);
+      c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
+      const deskObj = { x: pos.x, y: pos.y, c, plate, taken: false, idx, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg, secondRoom: true };
+      c.setSize(168, 84).setInteractive({ useHandCursor: true });
+      c.on('pointerdown', () => this.toggleDeskDept(idx));
+      this.deskObjs.push(deskObj);
+    });
+  }
+
+  renderSecondRoom() {
+    // no duplicate outlines on repeated calls
+    if (this.secondRoomGraphics) { this.secondRoomGraphics.destroy(); this.secondRoomGraphics = null; }
+    if (this.secondRoomLabel) { this.secondRoomLabel.destroy(); this.secondRoomLabel = null; }
+    // outline covering all second‑room desks (original + extra)
+    const rooms = this.deskObjs.filter(d => d.secondRoom || (!this.S.rooms.second && false));
+    if (!rooms.length) return;
+    const margin = 20;
+    const xs = rooms.map(d => d.x);
+    const ys = rooms.map(d => d.y);
+    const minX = Math.min(...xs) - margin;
+    const maxX = Math.max(...xs) + margin;
+    const minY = Math.min(...ys) - margin;
+    const maxY = Math.max(...ys) + margin;
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const outline = this.add.graphics().setDepth(5);
+    outline.lineStyle(2, 0xf5b942, 1);
+    outline.strokeRect(minX, minY, width, height);
+    this.secondRoomLabel = this.add.text(minX + width / 2, minY + 12, 'SECOND ROOM', { fontFamily: 'Courier New', fontSize: '16px', color: '#f5b942', fontStyle: 'bold' }).setOrigin(0.5).setDepth(6);
+    this.secondRoomGraphics = outline;
+  }
+
   // ----- top bar -----
   buildTopbar() {
     const g = this.add.graphics();
@@ -410,6 +502,8 @@ class Office extends Phaser.Scene {
     };
     // pause button: visual toggles between '▶' (running) and 'II' (paused)
     this.pauseBtn = mk(1080, '\u25b6', () => { this.S.speed = this.S.speed === 0 ? 1 : 0; this.updatePauseButton(); });
+    // BUY ROOM button added to top bar
+    const buyRoomBtn = mk(1020, 'BUY ROOM', () => this.purchaseSecondRoom());
     // PAUSED indicator text, shown when speed == 0
     this.pausedLabel = this.add.text(1080, 10, 'PAUSED', { fontFamily: 'Courier New', fontSize: '16px', color: '#f5b942' })
       .setOrigin(0.5).setDepth(25).setVisible(this.S.speed === 0);
@@ -428,8 +522,9 @@ class Office extends Phaser.Scene {
     }
   }
   weeklyBurn() {
-    let b = RENT + (this.quarterRentIncrease || 0);
-    for (const id of Object.keys(this.S.subs)) b += SUBS[id].price;
+    const S = this.S;
+    let b = RENT + (this.quarterRentIncrease || 0) + (S.extraRent || 0);
+    for (const id of Object.keys(S.subs)) b += SUBS[id].price;
     return b;
   }
   refreshTop() {
@@ -1202,17 +1297,19 @@ class Office extends Phaser.Scene {
       subs: S.subs,
       departments: S.departments || [],
       staff: S.staff.map(st => ({ model: st.model, deskIndex: this.deskObjs.indexOf(st.desk) })),
-      // jobs carry j.card (Phaser container) once rendered — strip to plain fields
-      // or JSON.stringify throws on circular refs and _persist silently dies (D-001)
       jobs: S.jobs.map(j => ({ id: j.id, title: j.title, stars: j.stars, pay: j.pay })),
       nextJobIn: S.nextJobIn,
       jobSeq: S.jobSeq,
       done: S.done,
       failed: S.failed,
       // shop: bought desks + one-time upgrades (rebuilt before staff seating)
-      extraDesks: this.deskObjs.filter(d => d.bought).map(d => ({ x: d.x, y: d.y })),
+      // idx recorded so dual-feature restores rebuild in original index order
+      extraDesks: this.deskObjs.filter(d => d.bought).map(d => ({ x: d.x, y: d.y, idx: this.deskObjs.indexOf(d) })),
       chairOwned: !!S.chairOwned,
       coffeeOwned: !!S.coffeeOwned,
+      rooms: S.rooms,
+      extraRent: S.extraRent,
+      secondRoomDesks: this.deskObjs.filter(d => d.secondRoom).map(d => ({ x: d.x, y: d.y, idx: this.deskObjs.indexOf(d) })),
     };
   }
 
@@ -1239,9 +1336,32 @@ class Office extends Phaser.Scene {
     this.S.failed = saved.failed;
     this.S.chairOwned = !!saved.chairOwned;
     this.S.coffeeOwned = !!saved.coffeeOwned;
-    // rebuild bought desks BEFORE the staff-seating loop so staff on
-    // bought desks re-seat onto restored desks (deskIndex stays aligned)
-    if (Array.isArray(saved.extraDesks)) saved.extraDesks.forEach(p => this.addBoughtDesk(p.x, p.y));
+    this.S.rooms = saved.rooms || { second: false };
+    this.S.extraRent = saved.extraRent || 0;
+    // rebuild extra desks (shop + second room) BEFORE the staff-seating loop so
+    // saved deskIndex values stay aligned even when both features were bought
+    // in either purchase order. idx is recorded in the snapshot; rebuild sorted.
+    const noIdx = (a) => Array.isArray(a) && a.some(p => typeof p.idx !== 'number');
+    if (noIdx(saved.extraDesks) || noIdx(saved.secondRoomDesks)) {
+      // legacy save (pre-idx): shop desks then second-room desks, as before
+      if (Array.isArray(saved.extraDesks)) saved.extraDesks.forEach(p => this.addBoughtDesk(p.x, p.y));
+      if (Array.isArray(saved.secondRoomDesks) && saved.secondRoomDesks.length) {
+        this.addSecondRoomDesks(saved.secondRoomDesks);
+        this.secondRoomAdded = true;
+      }
+    } else {
+      const specs = [];
+      (saved.extraDesks || []).forEach(p => specs.push({ kind: 'bought', x: p.x, y: p.y, idx: p.idx }));
+      (saved.secondRoomDesks || []).forEach(p => specs.push({ kind: 'second', x: p.x, y: p.y, idx: p.idx }));
+      specs.sort((a, b) => a.idx - b.idx).forEach(sp => {
+        if (sp.kind === 'bought') this.addBoughtDesk(sp.x, sp.y);
+        else { this.addSecondRoomDesks([{ x: sp.x, y: sp.y }]); this.secondRoomAdded = true; }
+      });
+    }
+    // Ensure second room outline is rendered if room was purchased
+    if (this.S.rooms.second) {
+      this.renderSecondRoom();
+    }
     if (Array.isArray(saved.staff)) {
       saved.staff.forEach(stSnap => {
         const desk = this.deskObjs[stSnap.deskIndex];
