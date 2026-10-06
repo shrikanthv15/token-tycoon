@@ -448,7 +448,7 @@ class Office extends Phaser.Scene {
     // Remove previous tier tabs if they exist
     if (this.tabTierAll) { this.tabTierAll.destroy(); this.tabTier1.destroy(); this.tabTier2.destroy(); this.tabTier3.destroy(); }
     // Tier tabs (ALL, 1★, 2★, 3★) above job cards
-    const tierY = 120; // position below main tabs, above job cards
+    const tierY = 150; // shifted to avoid overlap with tab bar
     const mkTierTab = (x, label, id) => {
       const t = this.add.text(x, tierY, label, { fontFamily: 'Courier New', fontSize: '16px', color: '#8b98ad', fontStyle: 'bold' })
         .setInteractive({ useHandCursor: true })
