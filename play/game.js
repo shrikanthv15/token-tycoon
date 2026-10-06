@@ -161,8 +161,10 @@ class Office extends Phaser.Scene {
     this.exposeHooks();
     // Purchase second room with key R (cost 200) and [BUY ROOM] button
     this.input.keyboard.on('keydown-R', () => this.purchaseSecondRoom());
-    // Add UI button for buying the second room
-    const buyRoomBtn = mk(1020, 'BUY ROOM', () => this.purchaseSecondRoom());
+    // Add UI button for buying the second room inside topbar
+    // (moved from create to buildTopbar)
+    // The button will be created in buildTopbar after the pause button.
+
     // Day/night overlay based on clock
     const { width, height } = this.scale;
     this.tintOverlay = this.add.rectangle(width/2, height/2, width, height, 0xffe0a0).setDepth(5);
@@ -363,10 +365,9 @@ class Office extends Phaser.Scene {
       const wkBarBg = this.add.graphics();
       wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -100, 56, 8);
       const wkBar = this.add.graphics();
-      // Hide desks until second room is purchased
-      const visible = !!this.S.rooms.second;
-      c.setVisible(visible);
-      plate.setVisible(visible);
+      // Original desks are always visible
+      c.setVisible(true);
+      plate.setVisible(true);
       c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
       const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx: i, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg };
       c.setSize(168, 84).setInteractive({ useHandCursor: true });
@@ -406,18 +407,16 @@ class Office extends Phaser.Scene {
     this._persist();
   }
 
-  addSecondRoomDesks() {
-    // positions for extra desks (2-4 desks) left of sidebar
-    const extraPositions = [
+  addSecondRoomDesks(savedPositions) {
+    // positions for extra desks (exact deterministic set)
+    const fixedPositions = [
       { x: 300, y: 150 },
       { x: 460, y: 150 },
-      { x: 300, y: 350 },
-      { x: 460, y: 350 },
+      { x: 620, y: 150 },
+      { x: 300, y: 480 },
     ];
-    const count = Phaser.Math.Between(2, 4);
-    const shuffled = Phaser.Utils.Array.Shuffle(extraPositions);
-    for (let i = 0; i < count; i++) {
-      const pos = shuffled[i];
+    const positions = Array.isArray(savedPositions) && savedPositions.length ? savedPositions : fixedPositions;
+    positions.forEach((pos, i) => {
       const idx = this.deskObjs.length;
       const c = this.add.container(pos.x, pos.y).setDepth(10);
       const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
@@ -447,7 +446,7 @@ class Office extends Phaser.Scene {
       c.setSize(168, 84).setInteractive({ useHandCursor: true });
       c.on('pointerdown', () => this.toggleDeskDept(idx));
       this.deskObjs.push(deskObj);
-    }
+    });
   }
 
   renderSecondRoom() {
@@ -494,6 +493,8 @@ class Office extends Phaser.Scene {
     };
     // pause button: visual toggles between '▶' (running) and 'II' (paused)
     this.pauseBtn = mk(1080, '\u25b6', () => { this.S.speed = this.S.speed === 0 ? 1 : 0; this.updatePauseButton(); });
+    // BUY ROOM button added to top bar
+    const buyRoomBtn = mk(1020, 'BUY ROOM', () => this.purchaseSecondRoom());
     // PAUSED indicator text, shown when speed == 0
     this.pausedLabel = this.add.text(1080, 10, 'PAUSED', { fontFamily: 'Courier New', fontSize: '16px', color: '#f5b942' })
       .setOrigin(0.5).setDepth(25).setVisible(this.S.speed === 0);
@@ -1199,6 +1200,7 @@ class Office extends Phaser.Scene {
       failed: S.failed,
       rooms: S.rooms,
       extraRent: S.extraRent,
+      secondRoomDesks: this.deskObjs.filter(d => d.secondRoom).map(d => ({ x: d.x, y: d.y })),
     };
   }
 
@@ -1225,6 +1227,15 @@ class Office extends Phaser.Scene {
     this.S.failed = saved.failed;
     this.S.rooms = saved.rooms || { second: false };
     this.S.extraRent = saved.extraRent || 0;
+    // Restore second room desks if snapshot includes them
+    if (Array.isArray(saved.secondRoomDesks) && saved.secondRoomDesks.length) {
+      this.addSecondRoomDesks(saved.secondRoomDesks);
+      this.secondRoomAdded = true;
+    }
+    // Ensure second room outline is rendered if room was purchased
+    if (this.S.rooms.second) {
+      this.renderSecondRoom();
+    }
     if (Array.isArray(saved.staff)) {
       saved.staff.forEach(stSnap => {
         const desk = this.deskObjs[stSnap.deskIndex];
