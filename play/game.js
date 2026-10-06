@@ -469,7 +469,7 @@ class Office extends Phaser.Scene {
       const title = this.add.text(-130, -48, j.title, { fontFamily: 'Courier New', fontSize: '14px', color: '#eceff4', fontStyle: 'bold' });
       const desc = this.add.text(-130, -30, j.description || '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad', wordWrap: { width: 260 } });
       const meta = this.add.text(-130, 4, '★'.repeat(j.stars) + `  $${j.pay}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' });
-      const hint = this.add.text(-130, 28, 'drag onto a person', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
+      const hint = this.add.text(-130, 28, 'drag onto a person', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' });
       // badge for AI jobs
       let badge = null;
       if (j.ai) {
@@ -528,7 +528,7 @@ class Office extends Phaser.Scene {
         mbg.fillStyle(0x0e131c, 1).fillRoundedRect(-135, -20, 270, 40, 6);
         mr.add([mbg,
           this.add.text(-120, -12, `${m.name}  ${'★'.repeat(m.cap)}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#eceff4' }),
-          this.add.text(-120, 6, 'click to assign → walks in', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' })
+          this.add.text(-120, 6, 'click to assign → walks in', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' })
         ]);
         // roster row hitbox: invisible Zone exactly over the visual bg rect.
         // The row container itself is NOT made interactive: container input
@@ -581,7 +581,7 @@ class Office extends Phaser.Scene {
       row.setSize(290, 52).setInteractive({ useHandCursor: true });
       row.on('pointerdown', () => this.setCurrentDept(dept));
       if (dept.unlocks && dept.unlocks.length) {
-        const u = this.add.text(-130, 20, 'Unlocks: ' + dept.unlocks.join(', '), { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
+        const u = this.add.text(-130, 20, 'Unlocks: ' + dept.unlocks.join(', '), { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' });
         row.add(u);
         y += 8;
       }
