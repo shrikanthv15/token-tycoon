@@ -232,11 +232,31 @@ class Office extends Phaser.Scene {
   }
 
   clearTangent() {
+    // If a staff member is currently tangent, move them back to their desk before clearing.
+    if (this.tangentStaff) {
+      const staff = this.tangentStaff;
+      // Tween back to desk position
+      this.tweens.add({
+        targets: staff.spr,
+        x: staff.desk.x,
+        y: staff.desk.y,
+        duration: 800,
+        ease: 'Linear',
+        onComplete: () => {
+          this.sitDown(staff);
+          staff.tangent = false;
+          this.tangentStaff = null;
+          // Clean up toast and state
+          if (this.tangentToast) { this.tangentToast.destroy(); this.tangentToast = null; }
+          this.tangentActive = false;
+          this.renderSidebar();
+        }
+      });
+      return; // wait for tween completion
+    }
+    // No staff tangent; just clear toast
     if (this.tangentToast) { this.tangentToast.destroy(); this.tangentToast = null; }
     this.tangentActive = false;
-    if (this.tangentStaff) this.tangentStaff.tangent = false;
-    this.tangentStaff = null;
-    // refresh UI if needed
     this.renderSidebar();
   }
 
