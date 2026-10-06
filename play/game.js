@@ -488,6 +488,11 @@ class Office extends Phaser.Scene {
     this.tabHire.setColor(this.tab === 'hire' ? '#f5b942' : '#8b98ad');
     this.tabDept.setColor(this.tab === 'dept' ? '#f5b942' : '#8b98ad');
     this.tabShop.setColor(this.tab === 'shop' ? '#f5b942' : '#8b98ad');
+    // tier filter tabs + job source line live outside sideC (persistent) —
+    // only show them on the INBOX tab so they don't bleed over other panels
+    const showTiers = this.tab === 'inbox';
+    Object.values(this.tierTabs).forEach(t => t.setVisible(showTiers));
+    if (this.jobSourceText) this.jobSourceText.setVisible(showTiers);
     const SX = 950;
     if (this.tab === 'inbox') this.renderInbox(SX);
     else if (this.tab === 'hire') this.renderHire(SX);
