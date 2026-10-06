@@ -1007,6 +1007,8 @@ class Office extends Phaser.Scene {
   _snapshot() {
     const S = this.S;
     return {
+      unlockedProviders: S.unlockedProviders,
+      unlockedFloors: S.unlockedFloors,
       cash: S.cash,
       day: S.day,
       week: S.week,

@@ -265,7 +265,7 @@ class Office extends Phaser.Scene {
 
   updatePauseButton() {
     if (!this.pauseBtn) return;
-    // When speed is 0, the game is paused -> show play symbol; otherwise show pause symbol
+    // Show play symbol when paused, otherwise show pause symbol
     const label = this.S.speed === 0 ? '\u25b6' : 'II';
     this.pauseBtn._label.setText(label);
   }
@@ -309,7 +309,7 @@ class Office extends Phaser.Scene {
       const title = this.add.text(-130, -48, j.title, { fontFamily: 'Courier New', fontSize: '14px', color: '#eceff4', fontStyle: 'bold' });
       const desc = this.add.text(-130, -30, j.description || '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad', wordWrap: { width: 260 } });
       const meta = this.add.text(-130, 4, '★'.repeat(j.stars) + `  $${j.pay}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' });
-      const hint = this.add.text(-130, 28, 'drag onto a person', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
+      const hint = this.add.text(-130, 28, 'drag onto a person', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' });
       // badge for AI jobs
       let badge = null;
       if (j.ai) {
@@ -337,16 +337,19 @@ class Office extends Phaser.Scene {
     const subRows = [];
     for (const [sid, sub] of Object.entries(SUBS)) {
       const owned = !!S.subs[sid];
+      const unlocked = S.unlockedProviders && S.unlockedProviders.includes(sid);
       // sub row
       const row = this.add.container(SX + 165, 0);
       const bg = this.add.graphics();
       bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -26, 290, 52, 8);
-      bg.lineStyle(2, owned ? 0x4ade80 : 0x1f2a3f, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
+      // outline green if owned, blue if unlocked but not owned, grey otherwise
+      const outlineColor = owned ? 0x4ade80 : (unlocked ? 0x1f2a3f : 0x555555);
+      bg.lineStyle(2, outlineColor, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
       row.add([bg,
         this.add.text(-130, -18, sub.name, { fontFamily: 'Courier New', fontSize: '15px', color: sub.css, fontStyle: 'bold' }),
-        this.add.text(-130, 4, owned ? 'active' : `$${sub.price}/wk`, { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
+        this.add.text(-130, 4, owned ? 'active' : (unlocked ? 'locked' : `$${sub.price}/wk`), { fontFamily: 'Courier New', fontSize: '12px', color: '#8b98ad' })
       ]);
-      if (!owned) {
+      if (!owned && unlocked) {
         const b = this.add.text(110, -8, '[ BUY ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942', fontStyle: 'bold' })
           .setInteractive({ useHandCursor: true });
         b.on('pointerdown', () => this.buySub(sid));
@@ -368,14 +371,10 @@ class Office extends Phaser.Scene {
         mbg.fillStyle(0x0e131c, 1).fillRoundedRect(-135, -20, 270, 40, 6);
         mr.add([mbg,
           this.add.text(-120, -12, `${m.name}  ${'★'.repeat(m.cap)}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#eceff4' }),
-          this.add.text(-120, 6, 'click to assign → walks in', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' })
+          this.add.text(-120, 6, 'click to assign → walks in', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' })
         ]);
-        // roster row hitbox: invisible Zone exactly over the visual bg rect.
-        // The row container itself is NOT made interactive: container input
-        // hit-tests ~20px above the container in this Phaser build (verified
-        // by sweep), so an explicit Zone gives the pixel-exact hit region.
         const hz = this.add.zone(SX + 165, y, 270, 40).setInteractive({ useHandCursor: true });
-        hz.on('pointerdown', () => this.hire(mid)); // reuse hire which now checks roster
+        hz.on('pointerdown', () => this.hire(mid));
         this.sideC.add(mr);
         this.sideC.add(hz);
         y += 46;
@@ -421,7 +420,7 @@ class Office extends Phaser.Scene {
       row.setSize(290, 52).setInteractive({ useHandCursor: true });
       row.on('pointerdown', () => this.setCurrentDept(dept));
       if (dept.unlocks && dept.unlocks.length) {
-        const u = this.add.text(-130, 20, 'Unlocks: ' + dept.unlocks.join(', '), { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
+        const u = this.add.text(-130, 20, 'Unlocks: ' + dept.unlocks.join(', '), { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' });
         row.add(u);
         y += 8;
       }
