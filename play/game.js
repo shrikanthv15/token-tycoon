@@ -58,6 +58,7 @@ const DESKS = [
   { x: 220, y: 330 }, { x: 560, y: 330 },
   { x: 220, y: 600 }, { x: 560, y: 600 },
 ];
+const SHOP_DESK_SLOTS = [{x:830,y:330},{x:830,y:600}];
 const DOOR = { x: 790, y: 800 };
 
 // ---------- pixel sprites ----------
@@ -131,6 +132,7 @@ function freshState() {
     quarterWeeks: 0,
     profitTarget: 20,
     quarterStartCash: 100,
+    extraDesks: [],
   };
 }
 
@@ -333,48 +335,55 @@ class Office extends Phaser.Scene {
     dw.fillStyle(0x4a3220, 1).fillRect(DOOR.x - 46, OY + OH - 4, 92, 30);
     this.add.text(DOOR.x, OY + OH + 13, 'DOOR', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
     // desks
-    this.deskObjs = DESKS.map((d, i) => {
-      const c = this.add.container(d.x, d.y).setDepth(10);
-      const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
-      const mon = this.add.graphics();
-      mon.fillStyle(0x1a1e28, 1).fillRect(-78, -52, 52, 34);
-      mon.fillStyle(0x58c4dc, 0.85).fillRect(-74, -48, 44, 26);
-      mon.fillStyle(0x1a1e28, 1).fillRect(-56, -18, 8, 10);
-      const kb = this.add.graphics();
-      kb.fillStyle(0xdfe6ee, 1).fillRect(-14, 22, 48, 12);
-      kb.fillStyle(0x8b98ad, 1);
-      for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
-      const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' }).setOrigin(0.5);
-      // pool meters (text)
-      const h5Text = this.add.text(0, -150, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
-      const wkText = this.add.text(0, -134, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
-      const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
-      const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
-      // pool meters (bars)
-      const h5BarBg = this.add.graphics();
-      h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -112, 56, 8);
-      const h5Bar = this.add.graphics();
-      const wkBarBg = this.add.graphics();
-      wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -100, 56, 8);
-      const wkBar = this.add.graphics();
-      c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
-      const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx: i, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg };
-      c.setSize(168, 84).setInteractive({ useHandCursor: true });
-      c.on('pointerdown', () => this.toggleDeskDept(i));
-      return deskObj;
-    });
+    this.deskObjs = DESKS.map((d, i) => this.makeDeskObj(d, i, false));
     // office chairs at each desk (depth 8: behind seated staff at 9, in front of floor)
-    DESKS.forEach(d => {
-      const ch = this.add.graphics().setDepth(8);
-      const x = d.x, b = d.y - 28;
-      ch.fillStyle(0x2a3140, 1);
-      ch.fillRect(x - 13, b - 64, 26, 48);
-      ch.fillRect(x - 17, b - 18, 34, 10);
-      ch.fillRect(x - 3, b - 8, 6, 20);
-      ch.fillRect(x - 16, b + 10, 32, 6);
-      ch.fillStyle(0x39424f, 1);
-      ch.fillRect(x - 13, b - 64, 26, 8);
-    });
+    DESKS.forEach(d => this.drawChair(d.x, d.y));
+  }
+
+  drawChair(x, y) {
+    const ch = this.add.graphics().setDepth(8);
+    const b = y - 28;
+    ch.fillStyle(0x2a3140, 1);
+    ch.fillRect(x - 13, b - 64, 26, 48);
+    ch.fillRect(x - 17, b - 18, 34, 10);
+    ch.fillRect(x - 3, b - 8, 6, 20);
+    ch.fillRect(x - 16, b + 10, 32, 6);
+    ch.fillStyle(0x39424f, 1);
+    ch.fillRect(x - 13, b - 64, 26, 8);
+  }
+
+  // Build one desk object with identical visuals + wiring. idx is captured at
+  // creation time — never evaluated from deskObjs.length at click time.
+  makeDeskObj(d, idx, bought) {
+    const c = this.add.container(d.x, d.y).setDepth(10);
+    const top = this.add.image(0, 0, 'desk').setDisplaySize(168, 84);
+    const mon = this.add.graphics();
+    mon.fillStyle(0x1a1e28, 1).fillRect(-78, -52, 52, 34);
+    mon.fillStyle(0x58c4dc, 0.85).fillRect(-74, -48, 44, 26);
+    mon.fillStyle(0x1a1e28, 1).fillRect(-56, -18, 8, 10);
+    const kb = this.add.graphics();
+    kb.fillStyle(0xdfe6ee, 1).fillRect(-14, 22, 48, 12);
+    kb.fillStyle(0x8b98ad, 1);
+    for (let k = 0; k < 6; k++) kb.fillRect(-10 + k * 8, 24, 5, 8);
+    const plate = this.add.text(0, 44, 'EMPTY DESK', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578' }).setOrigin(0.5);
+    // pool meters (text)
+    const h5Text = this.add.text(0, -150, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+    const wkText = this.add.text(0, -134, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#f5b942' }).setOrigin(0.5);
+    const h5Timer = this.add.text(0, -120, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
+    const wkTimer = this.add.text(0, -106, '', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }).setOrigin(0.5);
+    // pool meters (bars)
+    const h5BarBg = this.add.graphics();
+    h5BarBg.fillStyle(0x2a3852, 1).fillRect(-28, -112, 56, 8);
+    const h5Bar = this.add.graphics();
+    const wkBarBg = this.add.graphics();
+    wkBarBg.fillStyle(0x2a3852, 1).fillRect(-28, -100, 56, 8);
+    const wkBar = this.add.graphics();
+    c.add([top, mon, kb, plate, h5Text, wkText, h5Timer, wkTimer, h5BarBg, h5Bar, wkBarBg, wkBar]);
+    const deskObj = { x: d.x, y: d.y, c, plate, taken: false, idx, bought: !!bought, h5Text, wkText, h5Timer, wkTimer, h5Bar, wkBar, h5BarBg, wkBarBg };
+    const clickIdx = idx; // creation-time capture, not length-at-click-time
+    c.setSize(168, 84).setInteractive({ useHandCursor: true });
+    c.on('pointerdown', () => this.toggleDeskDept(clickIdx));
+    return deskObj;
   }
 
   // ----- top bar -----
@@ -453,9 +462,10 @@ class Office extends Phaser.Scene {
       t.setData('id', id);
       return t;
     };
-    this.tabInbox = mkTab(SX + 24, 'INBOX', 'inbox');
-    this.tabHire = mkTab(SX + 130, 'HIRE', 'hire');
-    this.tabDept = mkTab(SX + 236, 'DEPT', 'dept');
+    this.tabInbox = mkTab(SX + 16, 'INBOX', 'inbox');
+    this.tabHire = mkTab(SX + 96, 'HIRE', 'hire');
+    this.tabDept = mkTab(SX + 176, 'DEPT', 'dept');
+    this.tabShop = mkTab(SX + 256, 'SHOP', 'shop');
     // Tier filter tabs (only visible in INBOX)
     const tierLabels = ['ALL','LOCAL','PRO','ELITE'];
     this.tierTabs = {};
@@ -477,10 +487,12 @@ class Office extends Phaser.Scene {
     this.tabInbox.setColor(this.tab === 'inbox' ? '#f5b942' : '#8b98ad');
     this.tabHire.setColor(this.tab === 'hire' ? '#f5b942' : '#8b98ad');
     this.tabDept.setColor(this.tab === 'dept' ? '#f5b942' : '#8b98ad');
+    this.tabShop.setColor(this.tab === 'shop' ? '#f5b942' : '#8b98ad');
     const SX = 950;
     if (this.tab === 'inbox') this.renderInbox(SX);
     else if (this.tab === 'hire') this.renderHire(SX);
     else if (this.tab === 'dept') this.renderDept(SX);
+    else if (this.tab === 'shop') this.renderShop(SX);
   }
 
   // Compact action resets context and risk
@@ -631,6 +643,91 @@ class Office extends Phaser.Scene {
         y += 22;
       });
     }
+  }
+
+  // ----- shop UI -----
+  renderShop(SX) {
+    const S = this.S;
+    this.sideC.add(this.add.text(SX + 20, 120, 'SHOP — buy gear for the office:', { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }));
+    const items = [
+      { id: 'desk', name: 'Extra desk', price: 10, desc: 'buyable desk (max 2)' },
+      { id: 'chair', name: 'Ergonomic chair', price: 5, desc: '+$2 revenue per completed job' },
+      { id: 'coffee', name: 'Espresso machine', price: 25, desc: 'staff work 15% faster' },
+    ];
+    let y = 165;
+    for (const it of items) {
+      const owned = (it.id === 'chair' && !!S.chairOwned) || (it.id === 'coffee' && !!S.coffeeOwned);
+      const boughtDesks = this.deskObjs.filter(d => d.bought).length;
+      const soldOut = it.id === 'desk' && boughtDesks >= SHOP_DESK_SLOTS.length;
+      const afford = S.cash >= it.price;
+      const row = this.add.container(SX + 165, y);
+      const bg = this.add.graphics();
+      bg.fillStyle(0x0e131c, 1).fillRoundedRect(-145, -26, 290, 52, 8);
+      bg.lineStyle(2, owned ? 0x4ade80 : 0x1f2a3f, 1).strokeRoundedRect(-145, -26, 290, 52, 8);
+      row.add([bg,
+        this.add.text(-130, -18, `${it.name}  $${it.price}`, { fontFamily: 'Courier New', fontSize: '15px', color: '#eceff4', fontStyle: 'bold' }),
+        this.add.text(-130, 4, owned ? 'owned' : it.desc, { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' }),
+      ]);
+      if (owned) {
+        row.add(this.add.text(95, -8, '[ OWNED ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#4ade80', fontStyle: 'bold' }));
+      } else if (soldOut) {
+        row.add(this.add.text(110, -8, '[ MAX ]', { fontFamily: 'Courier New', fontSize: '13px', color: '#5a6578', fontStyle: 'bold' }));
+      } else {
+        const b = this.add.text(110, -8, '[ BUY ]', { fontFamily: 'Courier New', fontSize: '13px', color: afford ? '#f5b942' : '#5a6578', fontStyle: 'bold' })
+          .setInteractive({ useHandCursor: true });
+        b.on('pointerdown', () => {
+          if (it.id === 'desk') this.buyDesk();
+          else if (it.id === 'chair') this.buyChair();
+          else this.buyCoffee();
+        });
+        row.add(b);
+      }
+      this.sideC.add(row);
+      y += 62;
+    }
+  }
+
+  buyDesk() {
+    const S = this.S;
+    const n = this.deskObjs.filter(d => d.bought).length;
+    if (S.over || n >= SHOP_DESK_SLOTS.length || S.cash < 10) {
+      this.flashText(1115, 200, n >= SHOP_DESK_SLOTS.length ? 'MAX DESKS' : 'NO CASH', '#f87171');
+      return;
+    }
+    S.cash -= 10; S.spent += 10;
+    const slot = SHOP_DESK_SLOTS[n];
+    this.addBoughtDesk(slot.x, slot.y);
+    this.flashText(slot.x, slot.y - 100, 'NEW DESK', '#4ade80');
+    this._persist(); this.refreshTop(); this.renderSidebar();
+  }
+
+  // Create a bought desk at (x, y). idx is captured from the CURRENT length
+  // (creation time) — never from deskObjs.length at click time.
+  addBoughtDesk(x, y) {
+    const idx = this.deskObjs.length;
+    const deskObj = this.makeDeskObj({ x, y }, idx, true);
+    this.deskObjs.push(deskObj);
+    this.drawChair(x, y);
+  }
+
+  buyChair() {
+    const S = this.S;
+    if (S.over || S.chairOwned || S.cash < 5) {
+      this.flashText(1115, 262, S.chairOwned ? 'OWNED' : 'NO CASH', '#f87171');
+      return;
+    }
+    S.cash -= 5; S.spent += 5; S.chairOwned = true;
+    this._persist(); this.refreshTop(); this.renderSidebar();
+  }
+
+  buyCoffee() {
+    const S = this.S;
+    if (S.over || S.coffeeOwned || S.cash < 25) {
+      this.flashText(1115, 324, S.coffeeOwned ? 'OWNED' : 'NO CASH', '#f87171');
+      return;
+    }
+    S.cash -= 25; S.spent += 25; S.coffeeOwned = true;
+    this._persist(); this.refreshTop(); this.renderSidebar();
   }
 
   // ----- department UI -----
@@ -829,8 +926,9 @@ class Office extends Phaser.Scene {
     const finalFail = Math.max(baseFail, riskFail);
     const didSucceed = Math.random() > finalFail;
     if (didSucceed) {
-      S.cash += j.pay; S.revenue += j.pay; S.done++;
-      this.flashText(st.desk.x, st.desk.y - 118, `+$${j.pay}`, '#4ade80');
+      const pay = j.pay + (S.chairOwned ? 2 : 0);
+      S.cash += pay; S.revenue += pay; S.done++;
+      this.flashText(st.desk.x, st.desk.y - 118, `+$${pay}`, '#4ade80');
       this.tweens.add({ targets: st.spr, y: '-=10', duration: 160, yoyo: true, repeat: 1 });
     } else {
       S.failed++;
@@ -851,8 +949,9 @@ class Office extends Phaser.Scene {
         btn.on('pointerdown', () => {
           const SAVE_CHANCE = 0.2; // small constant chance to save
           if (Math.random() < SAVE_CHANCE) {
-            S.cash += j.pay; S.revenue += j.pay; S.done++;
-            self.flashText(st.desk.x, st.desk.y - 118, `+$${j.pay}`, '#4ade80');
+            const savePay = j.pay + (S.chairOwned ? 2 : 0);
+            S.cash += savePay; S.revenue += savePay; S.done++;
+            self.flashText(st.desk.x, st.desk.y - 118, `+$${savePay}`, '#4ade80');
           } else {
             self.flashText(st.desk.x, st.desk.y - 118, 'FAILED', '#f87171');
           }
@@ -953,7 +1052,7 @@ class Office extends Phaser.Scene {
       // typing hands: alternate the two typing frames
       st.typeT = (st.typeT || 0) + delta * S.speed;
       if (st.typeT > 160) { st.typeT = 0; st.typeF = st.typeF === 4 ? 5 : 4; st.spr.setTexture('p_' + st.model + st.typeF); }
-      st.workT += delta * S.speed;
+      st.workT += delta * S.speed * (S.coffeeOwned ? 1.15 : 1);
       const p = Math.min(1, st.workT / st.workDur);
       const g = st.bar; g.clear();
       g.fillStyle(0x1f2a3f, 1).fillRect(st.desk.x - 30, st.desk.y - 100, 60, 8);
@@ -1105,6 +1204,10 @@ class Office extends Phaser.Scene {
       jobSeq: S.jobSeq,
       done: S.done,
       failed: S.failed,
+      // shop: bought desks + one-time upgrades (rebuilt before staff seating)
+      extraDesks: this.deskObjs.filter(d => d.bought).map(d => ({ x: d.x, y: d.y })),
+      chairOwned: !!S.chairOwned,
+      coffeeOwned: !!S.coffeeOwned,
     };
   }
 
@@ -1129,6 +1232,11 @@ class Office extends Phaser.Scene {
     this.S.jobSeq = saved.jobSeq;
     this.S.done = saved.done;
     this.S.failed = saved.failed;
+    this.S.chairOwned = !!saved.chairOwned;
+    this.S.coffeeOwned = !!saved.coffeeOwned;
+    // rebuild bought desks BEFORE the staff-seating loop so staff on
+    // bought desks re-seat onto restored desks (deskIndex stays aligned)
+    if (Array.isArray(saved.extraDesks)) saved.extraDesks.forEach(p => this.addBoughtDesk(p.x, p.y));
     if (Array.isArray(saved.staff)) {
       saved.staff.forEach(stSnap => {
         const desk = this.deskObjs[stSnap.deskIndex];
@@ -1154,6 +1262,9 @@ class Office extends Phaser.Scene {
       state: this.S,
       scene: this,
       buySub: (id) => this.buySub(id),
+      buyDesk: () => this.buyDesk(),
+      buyChair: () => this.buyChair(),
+      buyCoffee: () => this.buyCoffee(),
       hire: (mid) => this.hire(mid),
       fire: (st) => this.fire(st),
       spawnJob: (...a) => this.spawnJob(...a),
