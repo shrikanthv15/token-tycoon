@@ -9,7 +9,8 @@ const { chromium } = require('playwright');
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 
   await page.goto('http://127.0.0.1:8903/index.html', { waitUntil: 'networkidle' });
-  if (!await page.evaluate(() => !!window.__tt)) throw new Error('Game not booted');
+  await page.waitForFunction(() => !!window.__tt, null, { timeout: 15000 });
+  if (!await page.evaluate(() => !!window.__tt)) throw new Error('Game did not boot');
 
   const cashBefore = await page.evaluate(() => Math.round(window.__tt.state.cash));
 
