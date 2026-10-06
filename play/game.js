@@ -123,7 +123,7 @@ function freshState() {
     jobs: [],          // inbox job cards {id,title,stars,pay,card}
     revenue: 0, spent: 0, nextJobIn: 8,
     jobSeq: 1, done: 0, failed: 0,
-    departments: [],   // {name:string, desks:[deskIdx]}
+    departments: [{ name: 'Dept 1', desks: [], unlocks: ['batch', 'pool'] }],   // {name:string, desks:[deskIdx]}
     roster: [],        // unassigned models {model, id}
     quarter: 1,
     quarterWeeks: 0,
