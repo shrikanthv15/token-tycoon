@@ -464,11 +464,11 @@ class Office extends Phaser.Scene {
       const y = 130 + i * 140; // increased spacing for description
       const card = this.add.container(SX + 165, y);
       const bg = this.add.graphics();
-      bg.fillStyle(0x121826, 1).fillRoundedRect(-145, -60, 290, 120, 8);
-      bg.lineStyle(2, 0xf5b942, 1).strokeRoundedRect(-145, -60, 290, 120, 8);
-      const title = this.add.text(-130, -48, j.title, { fontFamily: 'Courier New', fontSize: '14px', color: '#eceff4', fontStyle: 'bold' });
-      const desc = this.add.text(-130, -30, j.description || '', { fontFamily: 'Courier New', fontSize: '11px', color: '#8b98ad', wordWrap: { width: 260 } });
-      const meta = this.add.text(-130, 4, '★'.repeat(j.stars) + `  $${j.pay}`, { fontFamily: 'Courier New', fontSize: '13px', color: '#8b98ad' });
+      bg.fillStyle(0x0d111a, 1).fillRoundedRect(-145, -60, 290, 120, 10);
+      bg.lineStyle(2, 0xffd700, 1).strokeRoundedRect(-145, -60, 290, 120, 10);
+      const title = this.add.text(-130, -48, j.title, { fontFamily: 'Courier New', fontSize: '16px', color: '#ffffff', fontStyle: 'bold' });
+      const desc = this.add.text(-130, -30, j.description || '', { fontFamily: 'Courier New', fontSize: '12px', color: '#a0b0c0', wordWrap: { width: 260 } });
+      const meta = this.add.text(-130, 4, '★'.repeat(j.stars) + `  $${j.pay}`, { fontFamily: 'Courier New', fontSize: '14px', color: '#ffbf00' });
       const hint = this.add.text(-130, 28, 'drag onto a person', { fontFamily: 'Courier New', fontSize: '11px', color: '#5a6578' });
       // badge for AI jobs
       let badge = null;
