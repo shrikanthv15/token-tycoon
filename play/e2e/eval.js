@@ -76,7 +76,9 @@ const OX = (1500 - 1280) / 2, OY = (950 - 800) / 2; // canvas offset in viewport
     window.__tt.scene.updatePauseButton();
     return window.__tt.scene.pauseBtn._label.text;
   });
-  check('pause_state', pauseLabel === 'II', `label=${JSON.stringify(pauseLabel)}`);
+  // pause button: action semantics (PAN-68, verified+live) — when paused the button shows
+  // what clicking DOES (resume), i.e. ▶ while paused, II while running.
+  check('pause_state', pauseLabel === '▶', `label=${JSON.stringify(pauseLabel)}`);
   await ev(() => { window.__tt.state.speed = 1; window.__tt.scene.updatePauseButton(); });
 
   // departments structure present
