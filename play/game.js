@@ -413,7 +413,7 @@ class Office extends Phaser.Scene {
     this._persist();
   }
 
-  addSecondRoomDesks(savedPositions) {
+  addSecondRoomDesks(savedPositions, alreadyMigrated) {
     // positions for extra desks (exact deterministic set)
     // top row shifted +160 vs the old 300/460/620 so desk sprites (168 wide)
     // fully clear the SHIP IT whiteboard (x120-320)
@@ -423,10 +423,17 @@ class Office extends Phaser.Scene {
       { x: 780, y: 150 },
       { x: 300, y: 480 },
     ];
-    // one-time migration: old saves carry the pre-fix top-row x, shift them +160
-    const positions = (Array.isArray(savedPositions) && savedPositions.length)
-      ? savedPositions.map(p => (p.y === 150 ? { ...p, x: p.x + 160 } : p))
-      : fixedPositions;
+    // one-time migration: pre-fix saves carry top-row x 300/460/620, shift +160.
+    // Post-fix saves must NOT be re-shifted on every reload: they carry the
+    // secondRoomDesksMigrated flag, or already contain the post-fix x=780 desk.
+    // (PAN-74 follow-up: unguarded map() drifted desks +160 per reload.)
+    let positions = fixedPositions;
+    if (Array.isArray(savedPositions) && savedPositions.length) {
+      const looksPostFix = savedPositions.some(p => p.y === 150 && p.x === 780);
+      positions = (alreadyMigrated || looksPostFix)
+        ? savedPositions
+        : savedPositions.map(p => (p.y === 150 ? { ...p, x: p.x + 160 } : p));
+    }
     positions.forEach((pos, i) => {
       const idx = this.deskObjs.length;
       const c = this.add.container(pos.x, pos.y).setDepth(10);
@@ -1315,6 +1322,7 @@ class Office extends Phaser.Scene {
       rooms: S.rooms,
       extraRent: S.extraRent,
       secondRoomDesks: this.deskObjs.filter(d => d.secondRoom).map(d => ({ x: d.x, y: d.y, idx: this.deskObjs.indexOf(d) })),
+      secondRoomDesksMigrated: true, // PAN-74 migration marker: positions already post-fix, do not re-shift on load
     };
   }
 
@@ -1351,7 +1359,7 @@ class Office extends Phaser.Scene {
       // legacy save (pre-idx): shop desks then second-room desks, as before
       if (Array.isArray(saved.extraDesks)) saved.extraDesks.forEach(p => this.addBoughtDesk(p.x, p.y));
       if (Array.isArray(saved.secondRoomDesks) && saved.secondRoomDesks.length) {
-        this.addSecondRoomDesks(saved.secondRoomDesks);
+        this.addSecondRoomDesks(saved.secondRoomDesks, !!saved.secondRoomDesksMigrated);
         this.secondRoomAdded = true;
       }
     } else {
@@ -1360,7 +1368,7 @@ class Office extends Phaser.Scene {
       (saved.secondRoomDesks || []).forEach(p => specs.push({ kind: 'second', x: p.x, y: p.y, idx: p.idx }));
       specs.sort((a, b) => a.idx - b.idx).forEach(sp => {
         if (sp.kind === 'bought') this.addBoughtDesk(sp.x, sp.y);
-        else { this.addSecondRoomDesks([{ x: sp.x, y: sp.y }]); this.secondRoomAdded = true; }
+        else { this.addSecondRoomDesks([{ x: sp.x, y: sp.y }], !!saved.secondRoomDesksMigrated); this.secondRoomAdded = true; }
       });
     }
     // Ensure second room outline is rendered if room was purchased
