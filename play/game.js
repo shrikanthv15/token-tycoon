@@ -415,13 +415,18 @@ class Office extends Phaser.Scene {
 
   addSecondRoomDesks(savedPositions) {
     // positions for extra desks (exact deterministic set)
+    // top row shifted +160 vs the old 300/460/620 so desk sprites (168 wide)
+    // fully clear the SHIP IT whiteboard (x120-320)
     const fixedPositions = [
-      { x: 300, y: 150 },
       { x: 460, y: 150 },
       { x: 620, y: 150 },
+      { x: 780, y: 150 },
       { x: 300, y: 480 },
     ];
-    const positions = Array.isArray(savedPositions) && savedPositions.length ? savedPositions : fixedPositions;
+    // one-time migration: old saves carry the pre-fix top-row x, shift them +160
+    const positions = (Array.isArray(savedPositions) && savedPositions.length)
+      ? savedPositions.map(p => (p.y === 150 ? { ...p, x: p.x + 160 } : p))
+      : fixedPositions;
     positions.forEach((pos, i) => {
       const idx = this.deskObjs.length;
       const c = this.add.container(pos.x, pos.y).setDepth(10);
