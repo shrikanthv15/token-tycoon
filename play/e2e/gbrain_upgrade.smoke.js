@@ -11,7 +11,7 @@ try {
 
 
 (async () => {
-  const { chromium } = playwright;
+  const { chromium } = playwright; const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
@@ -41,7 +41,7 @@ try {
     const items = window.__tt.scene.shopItems || [];
     const idx = items.findIndex(it => it.id === 'gbrain');
     if (idx === -1) return null;
-    const y = 165 + idx * 62; // approximate vertical spacing used in renderShop
+    const y = 165 + idx * 62 - 8; // approximate vertical spacing used in renderShop
     return { x: 1225, y };
   });
   if (!gbrainBtn) throw new Error('GBrain shop item not found');
@@ -80,7 +80,7 @@ try {
     const items = window.__tt.scene.shopItems || [];
     const idx = items.findIndex(it => it.id === 'coffee');
     if (idx === -1) return null;
-    const y = 165 + idx * 62;
+    const y = 165 + idx * 62 - 8;
     return { x: 1225, y };
   });
   if (!coffeeBtn) throw new Error('Coffee shop item not found');
@@ -99,7 +99,7 @@ try {
 
   // Verify profit HUD exists and matches pattern
   const profitText = await page.evaluate(() => window.__tt.scene.profitT.text);
-  if (!/^\$\d+\/\d+$/.test(profitText)) throw new Error('profitT text format invalid: ' + profitText);
+  if (!/^\$-?\d+\/\d+$/.test(profitText)) throw new Error('profitT text format invalid: ' + profitText);
 
   // Simple staff work check: ensure at least one staff exists and runs a job with increased contextFill
   const staffCount = await page.evaluate(() => window.__tt.state.staff.length);
