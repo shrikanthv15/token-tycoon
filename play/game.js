@@ -1235,13 +1235,26 @@ class Office extends Phaser.Scene {
   }
   gameOver() {
     const S = this.S; S.over = true;
+    // compute weeks survived (full weeks before bankruptcy) and revenue earned
+    const weeksSurvived = Math.max(0, S.week - 1);
+    const curRecord = { weeks: weeksSurvived, revenue: S.revenue };
+    // load existing best from localStorage
+    let bestRecord = null;
+    try { bestRecord = JSON.parse(localStorage.getItem('tt_best') || 'null'); } catch (e) {}
+    // compare and store if current is better
+    if (!bestRecord || curRecord.weeks > bestRecord.weeks || (curRecord.weeks === bestRecord.weeks && curRecord.revenue > bestRecord.revenue)) {
+      try { localStorage.setItem('tt_best', JSON.stringify(curRecord)); } catch (e) {}
+      bestRecord = curRecord;
+    }
     const o = this.add.container(0, 0).setDepth(200);
     const bg = this.add.graphics();
     bg.fillStyle(0x0a0d13, 0.88).fillRect(0, 0, 1280, 800);
     o.add([bg,
       this.add.text(640, 300, 'BANKRUPT', { fontFamily: 'Courier New', fontSize: '64px', color: '#f87171', fontStyle: 'bold' }).setOrigin(0.5),
-      this.add.text(640, 380, `You survived ${S.week - 1} week${S.week - 1 === 1 ? '' : 's'}.`, { fontFamily: 'Courier New', fontSize: '24px', color: '#eceff4' }).setOrigin(0.5),
+      this.add.text(640, 380, `You survived ${weeksSurvived} week${weeksSurvived === 1 ? '' : 's'}.`, { fontFamily: 'Courier New', fontSize: '24px', color: '#eceff4' }).setOrigin(0.5),
       this.add.text(640, 420, `Revenue earned: $${S.revenue} · Total burned: $${S.spent}`, { fontFamily: 'Courier New', fontSize: '16px', color: '#8b98ad' }).setOrigin(0.5),
+      // display best record line
+      this.add.text(640, 460, `BEST: ${bestRecord.weeks} week${bestRecord.weeks === 1 ? '' : 's'} ($${bestRecord.revenue} revenue)`, { fontFamily: 'Courier New', fontSize: '18px', color: '#f5b942' }).setOrigin(0.5),
     ]);
     const btn = this.add.container(640, 500);
     const bbg = this.add.graphics();
