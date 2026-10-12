@@ -779,6 +779,7 @@ class Office extends Phaser.Scene {
       { id: 'coffee', name: 'Espresso machine', price: 25, desc: 'staff work 15% faster' },
       { id: 'gbrain', name: 'GBrain — team memory core', price: 60, desc: 'contextFill 0.75x while owned' },
     ];
+    this.shopItems = items; // expose for tests
     let y = 165;
     for (const it of items) {
       const owned = (it.id === 'chair' && !!S.chairOwned) || (it.id === 'coffee' && !!S.coffeeOwned) || (it.id === 'gbrain' && !!S.gbrainOwned);
@@ -808,9 +809,11 @@ class Office extends Phaser.Scene {
             S.cash -= it.price; S.spent += it.price; S.gbrainOwned = true;
             this.refreshTop();
             this._persist();
-            // show GBrain marker in office
-            const marker = this.add.rectangle(770, 44, 40, 40, 0x4ade80).setDepth(10);
+            // show GBrain marker in office at cleared floor location
+            const marker = this.add.rectangle(700, 560, 40, 40, 0x4ade80).setDepth(10);
+            const label = this.add.text(700 + 45, 560, 'GBrain', { fontFamily: 'Courier New', fontSize: '13px', color: '#4ade80' }).setDepth(10);
             this.gbrainMarker = marker;
+            this.gbrainLabel = label;
             // add HUD indicator
             this.gbrainT.setText(S.gbrainOwned ? 'GBrain owned' : '');
           } else this.buyCoffee();
@@ -1392,6 +1395,8 @@ class Office extends Phaser.Scene {
     this.S.coffeeOwned = !!saved.coffeeOwned;
     // Restore chairOwned flag
     this.S.chairOwned = !!saved.chairOwned;
+    // Restore GBrain owned flag
+    this.S.gbrainOwned = !!saved.gbrainOwned;
     this.S.rooms = saved.rooms || { second: false };
     this.S.extraRent = saved.extraRent || 0;
     // rebuild extra desks (shop + second room) BEFORE the staff-seating loop so
@@ -1420,8 +1425,10 @@ class Office extends Phaser.Scene {
     }
     // Restore GBrain marker and HUD if owned
     if (this.S.gbrainOwned) {
-      const marker = this.add.rectangle(770, 44, 40, 40, 0x4ade80).setDepth(10);
+      const marker = this.add.rectangle(700, 560, 40, 40, 0x4ade80).setDepth(10);
+      const label = this.add.text(700 + 45, 560, 'GBrain', { fontFamily: 'Courier New', fontSize: '13px', color: '#4ade80' }).setDepth(10);
       this.gbrainMarker = marker;
+      this.gbrainLabel = label;
       this.gbrainT.setText('GBrain owned');
     }
     if (Array.isArray(saved.staff)) {
