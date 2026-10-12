@@ -504,7 +504,8 @@ class Office extends Phaser.Scene {
     this.burnT = this.add.text(430, 22, '', { fontFamily: 'Courier New', fontSize: '15px', color: '#f87171' });
     // quarter timer and profit target
     this.quarterT = this.add.text(620, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#ffbf00' });
-    this.gbrainT = this.add.text(860, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#66ff66' }).setDepth(25);
+    this.gbrainT = this.add.text(770, 44, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#66ff66' }).setDepth(25);
+    this.profitT = this.add.text(770, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#66ff66' }).setDepth(25);
 
     const mk = (x, label, cb) => {
       const b = this.add.container(x, 32);
@@ -553,6 +554,9 @@ class Office extends Phaser.Scene {
     // quarter timer display (13 weeks per quarter)
     const weeksLeft = Math.max(0, 13 - S.quarterWeeks);
     this.quarterT.setText(`Q${S.quarter} ${weeksLeft}w`);
+    // profit HUD (profit so far / target)
+    const profitSoFar = Math.round(S.cash - S.quarterStartCash);
+    this.profitT.setText(`$${profitSoFar}/${S.profitTarget}`);
     this.gbrainT.setText(S.gbrainOwned ? 'GBrain owned' : '');
   }
 
@@ -805,7 +809,7 @@ class Office extends Phaser.Scene {
             this.refreshTop();
             this._persist();
             // show GBrain marker in office
-            const marker = this.add.rectangle(500, 200, 40, 40, 0x4ade80).setDepth(10);
+            const marker = this.add.rectangle(770, 44, 40, 40, 0x4ade80).setDepth(10);
             this.gbrainMarker = marker;
             // add HUD indicator
             this.gbrainT.setText(S.gbrainOwned ? 'GBrain owned' : '');
@@ -1384,8 +1388,10 @@ class Office extends Phaser.Scene {
     this.S.jobSeq = saved.jobSeq;
     this.S.done = saved.done;
     this.S.failed = saved.failed;
+    // Restore coffeeOwned flag
+    this.S.coffeeOwned = !!saved.coffeeOwned;
+    // Restore chairOwned flag
     this.S.chairOwned = !!saved.chairOwned;
-    this.S.gbrainOwned = !!saved.gbrainOwned;
     this.S.rooms = saved.rooms || { second: false };
     this.S.extraRent = saved.extraRent || 0;
     // rebuild extra desks (shop + second room) BEFORE the staff-seating loop so
@@ -1414,7 +1420,7 @@ class Office extends Phaser.Scene {
     }
     // Restore GBrain marker and HUD if owned
     if (this.S.gbrainOwned) {
-      const marker = this.add.rectangle(500, 200, 40, 40, 0x4ade80).setDepth(10);
+      const marker = this.add.rectangle(770, 44, 40, 40, 0x4ade80).setDepth(10);
       this.gbrainMarker = marker;
       this.gbrainT.setText('GBrain owned');
     }
