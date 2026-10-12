@@ -75,6 +75,11 @@ try {
     if (factor2 !== 0.75) throw new Error('GBrain factor incorrect after reload #' + (i+1));
   }
 
+  // Re-open SHOP tab: reloads reset to INBOX and shopItems only exists while the shop tab renders
+  await click(shopTabX, 84);
+  await page.waitForTimeout(400);
+  if (await page.evaluate(() => window.__tt.scene.tab) !== 'shop') throw new Error('SHOP tab not active after reload');
+
   // Buy coffee (price $25) to test coffeeOwned persistence
   const coffeeBtn = await page.evaluate(() => {
     const items = window.__tt.scene.shopItems || [];
@@ -101,11 +106,15 @@ try {
   const profitText = await page.evaluate(() => window.__tt.scene.profitT.text);
   if (!/^\$-?\d+\/\d+$/.test(profitText)) throw new Error('profitT text format invalid: ' + profitText);
 
+  // Staff work check setup: fresh saves start with no staff — hire one via the test hooks (smoke3 pattern)
+  await page.evaluate(() => { window.__tt.state.cash += 100; window.__tt.buySub('claude'); window.__tt.hire('haiku'); });
+  await page.waitForTimeout(2000);
+
   // Simple staff work check: ensure at least one staff exists and runs a job with increased contextFill
   const staffCount = await page.evaluate(() => window.__tt.state.staff.length);
   if (staffCount === 0) throw new Error('No staff present for work test');
-  // Advance time by 10 wall seconds (approx 10*1000ms)
-  await page.evaluate(() => { window.__tt.scene.advanceTime(10 * 1000); });
+  // Let the live game loop run 10 wall seconds (exercises work/tangent/pool paths; no phantom helpers)
+  await page.waitForTimeout(10000);
   // No explicit assertion on contextFill – presence of no errors is sufficient
 
   if (errors.length) throw new Error('Encountered errors: ' + errors.join(' | '));
