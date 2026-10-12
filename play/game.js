@@ -135,6 +135,10 @@ function freshState() {
     extraDesks: [],
     rooms: { second: false },
     extraRent: 0,
+    // GBrain upgrade ownership flag
+    gbrainOwned: false,
+
+
   };
 }
 
@@ -500,7 +504,8 @@ class Office extends Phaser.Scene {
     this.burnT = this.add.text(430, 22, '', { fontFamily: 'Courier New', fontSize: '15px', color: '#f87171' });
     // quarter timer and profit target
     this.quarterT = this.add.text(620, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#ffbf00' });
-    this.profitT = this.add.text(770, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#66ff66' });
+    this.gbrainT = this.add.text(860, 20, '', { fontFamily: 'Courier New', fontSize: '18px', color: '#66ff66' }).setDepth(25);
+
     const mk = (x, label, cb) => {
       const b = this.add.container(x, 32);
       const bg = this.add.graphics();
@@ -548,9 +553,12 @@ class Office extends Phaser.Scene {
     // quarter timer display (13 weeks per quarter)
     const weeksLeft = Math.max(0, 13 - S.quarterWeeks);
     this.quarterT.setText(`Q${S.quarter} ${weeksLeft}w`);
-    // profit progress display
-    const profitSoFar = Math.round(S.cash - S.quarterStartCash);
-    this.profitT.setText(`$${profitSoFar}/${S.profitTarget}`);
+    this.gbrainT.setText(S.gbrainOwned ? 'GBrain owned' : '');
+  }
+
+  // GBrain factor hook for tests
+  gbrainFactor() {
+    return this.S.gbrainOwned ? 0.75 : 1;
   }
 
   // ----- sidebar -----
@@ -765,10 +773,11 @@ class Office extends Phaser.Scene {
       { id: 'desk', name: 'Extra desk', price: 10, desc: 'buyable desk (max 2)' },
       { id: 'chair', name: 'Ergonomic chair', price: 5, desc: '+$2 revenue per completed job' },
       { id: 'coffee', name: 'Espresso machine', price: 25, desc: 'staff work 15% faster' },
+      { id: 'gbrain', name: 'GBrain — team memory core', price: 60, desc: 'contextFill 0.75x while owned' },
     ];
     let y = 165;
     for (const it of items) {
-      const owned = (it.id === 'chair' && !!S.chairOwned) || (it.id === 'coffee' && !!S.coffeeOwned);
+      const owned = (it.id === 'chair' && !!S.chairOwned) || (it.id === 'coffee' && !!S.coffeeOwned) || (it.id === 'gbrain' && !!S.gbrainOwned);
       const boughtDesks = this.deskObjs.filter(d => d.bought).length;
       const soldOut = it.id === 'desk' && boughtDesks >= SHOP_DESK_SLOTS.length;
       const afford = S.cash >= it.price;
@@ -790,7 +799,17 @@ class Office extends Phaser.Scene {
         b.on('pointerdown', () => {
           if (it.id === 'desk') this.buyDesk();
           else if (it.id === 'chair') this.buyChair();
-          else this.buyCoffee();
+          else if (it.id === 'gbrain') {
+            if (S.gbrainOwned) return; // already owned
+            S.cash -= it.price; S.spent += it.price; S.gbrainOwned = true;
+            this.refreshTop();
+            this._persist();
+            // show GBrain marker in office
+            const marker = this.add.rectangle(500, 200, 40, 40, 0x4ade80).setDepth(10);
+            this.gbrainMarker = marker;
+            // add HUD indicator
+            this.gbrainT.setText(S.gbrainOwned ? 'GBrain owned' : '');
+          } else this.buyCoffee();
         });
         row.add(b);
       }
@@ -997,7 +1016,10 @@ class Office extends Phaser.Scene {
     if (!st || !j || st.busy || S.over) { this.renderSidebar(); return; }
     const m = MODELS[st.model], sub = S.subs[m.sub];
     let cost = Math.round(m.cost * (0.7 + 0.3 * j.stars));
-    const fillInc = Math.min(100, Math.round(cost / 10));
+    let fillInc = Math.min(100, Math.round(cost / 10));
+    if (S.gbrainOwned) {
+      fillInc = Math.round(fillInc * 0.75);
+    }
     st.contextFill = Math.min(100, (st.contextFill || 0) + fillInc);
     const rawRisk = 0.03 + (st.contextFill / 100) * 0.5 + (m.cap - j.stars) * 0.1;
     const risk = Math.max(0, Math.min(1, rawRisk));
@@ -1332,6 +1354,8 @@ class Office extends Phaser.Scene {
       extraDesks: this.deskObjs.filter(d => d.bought).map(d => ({ x: d.x, y: d.y, idx: this.deskObjs.indexOf(d) })),
       chairOwned: !!S.chairOwned,
       coffeeOwned: !!S.coffeeOwned,
+      // GBrain upgrade ownership flag
+      gbrainOwned: !!S.gbrainOwned,
       rooms: S.rooms,
       extraRent: S.extraRent,
       secondRoomDesks: this.deskObjs.filter(d => d.secondRoom).map(d => ({ x: d.x, y: d.y, idx: this.deskObjs.indexOf(d) })),
@@ -1361,7 +1385,7 @@ class Office extends Phaser.Scene {
     this.S.done = saved.done;
     this.S.failed = saved.failed;
     this.S.chairOwned = !!saved.chairOwned;
-    this.S.coffeeOwned = !!saved.coffeeOwned;
+    this.S.gbrainOwned = !!saved.gbrainOwned;
     this.S.rooms = saved.rooms || { second: false };
     this.S.extraRent = saved.extraRent || 0;
     // rebuild extra desks (shop + second room) BEFORE the staff-seating loop so
@@ -1387,6 +1411,12 @@ class Office extends Phaser.Scene {
     // Ensure second room outline is rendered if room was purchased
     if (this.S.rooms.second) {
       this.renderSecondRoom();
+    }
+    // Restore GBrain marker and HUD if owned
+    if (this.S.gbrainOwned) {
+      const marker = this.add.rectangle(500, 200, 40, 40, 0x4ade80).setDepth(10);
+      this.gbrainMarker = marker;
+      this.gbrainT.setText('GBrain owned');
     }
     if (Array.isArray(saved.staff)) {
       saved.staff.forEach(stSnap => {
@@ -1426,6 +1456,8 @@ class Office extends Phaser.Scene {
       currentDept: this.currentDept,
       // Tangent event state for testing
       tangentActive: () => this.tangentActive,
+      // GBrain factor hook
+      gbrainFactor: () => this.gbrainFactor(),
     };
   }
 }
